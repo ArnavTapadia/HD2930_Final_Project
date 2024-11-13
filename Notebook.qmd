@@ -84,9 +84,8 @@ ggplot(type_gym_counts, aes(x = reorder(Workout_Type, -n), y = n)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 Research Question
-<<<<<<< Updated upstream
+
 How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
-=======
+
 How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
->>>>>>> 19e9b97e1765a32443ccb7242dbbb23fdef02de8
->>>>>>> Stashed changes
+
