@@ -11,9 +11,9 @@ title: 11/13/24
 library(tidyverse)
 
 
-gym_members_data <- read.csv("gym_members_exercise_tracking.csv")
+gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
-maga_gym_data <- read.csv("megaGymDataset.csv")
+maga_gym_data <- read_csv("megaGymDataset.csv")
 
 
 ```
