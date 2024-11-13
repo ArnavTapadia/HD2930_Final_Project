@@ -5,3 +5,14 @@ format: pdf
 editor: visual
 title: 11/13/24
 ---
+
+```{r}
+library(tidyverse)
+
+
+gym_members_data <- read.csv("gym_members_exercise_tracking.csv")
+
+maga_gym_data <- read.csv("megaGymDataset.csv")
+
+
+```
