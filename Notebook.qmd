@@ -1,7 +1,8 @@
 ---
-title: "LAB 11"
+title: "GYM Data Analysis"
 author: "Arnav, Sam, Quinn, and Santiago"
 format: pdf
 editor: visual
+data: today
 title: 11/13/24
 ---
