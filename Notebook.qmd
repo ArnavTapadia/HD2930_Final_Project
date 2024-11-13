@@ -1,10 +1,9 @@
 ---
 title: "GYM Data Analysis"
 author: "Arnav, Sam, Quinn, and Santiago"
+date: today
 format: pdf
 editor: source
-data: today
-title: 11/13/24
 ---
 
 # Question 1
