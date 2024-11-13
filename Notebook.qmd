@@ -22,6 +22,8 @@ library(ggplot2)
 library(dplyr)
 ```
 
+With this data set we are considering taking the approach of "being" a personal trainer who is analyzing this data set in order to best determine what types of lessons to offer for what specific person.
+
 ```{r}
 
 <<<<<<< Updated upstream
@@ -50,3 +52,5 @@ type_gym_counts <- gym_members_data %>%
 # View the results
 type_gym_counts
 ```
+
+in these two figures above we had each data set be counted by the type of workout. What we can see is that for Mega Counts strength workouts are a lot more common with 2,545 followed by stretching with only 147. This story continues for the Gym Counts as strength is the most common one but not by nearly as large as a margin as we see that the count is 258 and is followed by Cardio with 255. The two graphics below help display this better.
