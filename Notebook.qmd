@@ -16,9 +16,13 @@ library(tidymodels)
 
 ```{r}
 
+<<<<<<< Updated upstream
 gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
 maga_gym_data <- read_csv("megaGymDataset.csv")
+=======
+mega_gym_data <- read.csv("megaGymDataset.csv")
+>>>>>>> Stashed changes
 
 
 ```
@@ -27,6 +31,7 @@ maga_gym_data <- read_csv("megaGymDataset.csv")
 ```{r}
 
 type_maga_counts <- maga_gym_data %>%
+type_mega_counts <- mega_gym_data %>%
   count(Type) %>%
   arrange(desc(n))
 
