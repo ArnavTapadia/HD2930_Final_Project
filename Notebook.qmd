@@ -88,3 +88,5 @@ Research Question
 Quinn: How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
 
 Arnav: given a person's heart rate, gender, other demographic data what type of workout is recommended? Is there a relation between the type of workouts and a person's biographical data (age heart rate etc)?
+
+Santiago: How does the number of Calories Burned and Water Intake affect Fat Percentage, how correlated or causal? Does age also influence?
