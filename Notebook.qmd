@@ -1,0 +1,7 @@
+---
+title: "LAB 11"
+author: "Arnav, Sam, Quinn, and Santiago"
+format: pdf
+editor: visual
+title: 11/13/24
+---
