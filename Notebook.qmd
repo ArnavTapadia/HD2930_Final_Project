@@ -26,7 +26,6 @@ With this data set we are considering taking the approach of "being" a personal 
 
 ```{r}
 
-<<<<<<< Updated upstream
 gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
 mega_gym_data <- read_csv("megaGymDataset.csv")
