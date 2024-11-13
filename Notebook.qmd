@@ -17,3 +17,23 @@ maga_gym_data <- read.csv("megaGymDataset.csv")
 
 
 ```
+
+
+```{r}
+
+type_maga_counts <- maga_gym_data %>%
+  count(Type) %>%
+  arrange(desc(n))
+
+# View the results
+type_counts
+
+
+type_gym_counts <- gym_members_data %>%
+  count(Workout_Type) %>%
+  arrange(desc(n))
+
+# View the results
+type_gym_counts
+
+```
