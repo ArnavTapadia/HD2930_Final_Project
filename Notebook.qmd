@@ -27,10 +27,8 @@ mega_gym_data <- read.csv("megaGymDataset.csv")
 
 ```
 
-
 ```{r}
 
-type_maga_counts <- maga_gym_data %>%
 type_mega_counts <- mega_gym_data %>%
   count(Type) %>%
   arrange(desc(n))
