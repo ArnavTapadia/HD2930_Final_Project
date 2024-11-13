@@ -51,9 +51,21 @@ type_gym_counts <- gym_members_data %>%
 type_gym_counts
 ```
 
+```{r}
+
+
+# Boxplot of Calories Burned by the specified exercise types
+ggplot(gym_members_data, aes(x = Workout_Type, y = Calories_Burned)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Calories Burned by Selected Exercise Types", x = "Exercise Type", y = "Calories Burned") +
+  theme_minimal()
+```
+
+
 in these two figures above we had each data set be counted by the type of workout. What we can see is that for Mega Counts strength workouts are a lot more common with 2,545 followed by stretching with only 147. This story continues for the Gym Counts as strength is the most common one but not by nearly as large as a margin as we see that the count is 258 and is followed by Cardio with 255. The two graphics below help display this better.
 
 ```{r}
+
 ggplot(type_mega_counts, aes(x = reorder(Type, -n), y = n)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(title = "Workout Type Counts in Mega Gym Data",
@@ -72,4 +84,9 @@ ggplot(type_gym_counts, aes(x = reorder(Workout_Type, -n), y = n)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 Research Question
+<<<<<<< Updated upstream
 How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
+=======
+How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
+>>>>>>> 19e9b97e1765a32443ccb7242dbbb23fdef02de8
+>>>>>>> Stashed changes
