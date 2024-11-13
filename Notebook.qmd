@@ -9,11 +9,11 @@ title: 11/13/24
 
 # Question 1
 
-For lab credit, submit at least one table or figure from (some of?) the data that you plan to use for the final\
-project. Describe the data in the figure or the values in the table.\
+For lab credit, submit at least one table or figure from (some of?) the data that you plan to use for the final
+project. Describe the data in the figure or the values in the table.
 
-Choosing your research question and data is a very important step. Try to choose something that you care\
-about and that you can use to practice and further develop your data science skills.\
+Choosing your research question and data is a very important step. Try to choose something that you care
+about and that you can use to practice and further develop your data science skills.
 
 ```{r, message=FALSE}
 library(tidyverse)
