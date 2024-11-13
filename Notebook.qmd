@@ -24,7 +24,6 @@ library(dplyr)
 
 ```{r}
 
-<<<<<<< Updated upstream
 gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
 mega_gym_data <- read_csv("megaGymDataset.csv")
