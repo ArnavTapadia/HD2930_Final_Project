@@ -18,7 +18,8 @@ about and that you can use to practice and further develop your data science ski
 ```{r, message=FALSE}
 library(tidyverse)
 library(tidymodels)
-
+library(ggplot2)
+library(dplyr)
 ```
 
 ```{r}
@@ -29,7 +30,6 @@ mega_gym_data <- read_csv("megaGymDataset.csv")
 
 head(gym_members_data)
 head(mega_gym_data)
-
 ```
 
 ```{r}
@@ -48,5 +48,4 @@ type_gym_counts <- gym_members_data %>%
 
 # View the results
 type_gym_counts
-
 ```
