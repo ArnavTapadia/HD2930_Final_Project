@@ -2,7 +2,7 @@
 title: "GYM Data Analysis"
 author: "Arnav, Sam, Quinn, and Santiago"
 format: pdf
-editor: visual
+editor: source
 data: today
 title: 11/13/24
 ---
