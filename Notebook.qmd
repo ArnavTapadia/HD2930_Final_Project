@@ -25,19 +25,21 @@ library(tidymodels)
 
 gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
-maga_gym_data <- read_csv("megaGymDataset.csv")
+mega_gym_data <- read_csv("megaGymDataset.csv")
 
+head(gym_members_data)
+head(mega_gym_data)
 
 ```
 
 ```{r}
 
-type_maga_counts <- maga_gym_data %>%
+type_mega_counts <- mega_gym_data %>%
   count(Type) %>%
   arrange(desc(n))
 
 # View the results
-type_counts
+type_mega_counts
 
 
 type_gym_counts <- gym_members_data %>%
