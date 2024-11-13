@@ -7,9 +7,14 @@ data: today
 title: 11/13/24
 ---
 
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
+library(tidymodels)
 
+```
+
+
+```{r}
 
 gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
 
