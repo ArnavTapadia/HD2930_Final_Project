@@ -90,3 +90,118 @@ Quinn: How does the type of exercise and experience level influence calorie burn
 Arnav: given a person's heart rate, gender, other demographic data what type of workout is recommended? Is there a relation between the type of workouts and a person's biographical data (age heart rate etc)?
 
 Santiago: How does the number of Calories Burned and Water Intake affect Fat Percentage, how correlated or causal? Does age also influence?
+
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(corrplot)
+
+merged_data <- gym_members_data %>%
+  left_join(mega_gym_data, by = c("Workout_Type" = "Type"))
+
+# age groups
+merged_data <- merged_data %>%
+  mutate(Age_Group = cut(Age, breaks = c(0, 20, 30, 40, 50, 60, Inf),
+                         labels = c("0-20", "21-30", "31-40", "41-50", "51-60", "60+")))
+
+
+# Visualization 1
+ggplot(merged_data, aes(x = Workout_Type, y = Calories_Burned, fill = factor(Experience_Level))) +
+  geom_boxplot() +
+  facet_wrap(~Age_Group) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Calories Burned by Workout Type and Experience Level",
+       x = "Workout Type", y = "Calories Burned", fill = "Experience Level")
+
+# Visualization 2
+ggplot(merged_data, aes(x = Workout_Type, y = Avg_BPM, fill = Gender)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Average Heart Rate by Workout Type and Gender",
+       x = "Workout Type", y = "Average BPM")
+
+# Visualization 3
+ggplot(merged_data, aes(x = Rating, y = Calories_Burned)) +
+  geom_point(aes(color = Workout_Type), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  facet_wrap(~Experience_Level) +
+  labs(title = "Correlation between Exercise Rating and Calories Burned",
+       x = "Exercise Rating", y = "Calories Burned")
+
+# Visualization 4
+ggplot(merged_data, aes(x = Age_Group, y = Max_BPM, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "Maximum Heart Rate by Age Group and Gender",
+       x = "Age Group", y = "Max BPM")
+
+# Visualization 5
+calories_heatmap <- merged_data %>%
+  group_by(Workout_Type, Experience_Level) %>%
+  summarize(Avg_Calories = mean(Calories_Burned, na.rm = TRUE))
+
+ggplot(calories_heatmap, aes(x = Workout_Type, y = factor(Experience_Level), fill = Avg_Calories)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Average Calories Burned by Workout Type and Experience Level",
+       x = "Workout Type", y = "Experience Level")
+
+# Visualization 6
+ggplot(merged_data, aes(x = `Session_Duration (hours)`, y = Calories_Burned, color = Workout_Type)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~Gender) +
+  labs(title = "Session Duration vs Calories Burned by Gender and Workout Type",
+       x = "Session Duration (hours)", y = "Calories Burned")
+
+# Visualization 7:
+cor_vars <- c("Calories_Burned", "Max_BPM", "Avg_BPM", "Resting_BPM", "Session_Duration (hours)", "BMI", "Fat_Percentage", "Workout_Frequency (days/week)")
+
+# correlation matrix
+cor_matrix <- cor(merged_data[, cor_vars], use = "complete.obs")
+
+# heatmap
+library(reshape2)  # For melting the correlation matrix
+cor_melted <- melt(cor_matrix)
+
+#heatmap
+ggplot(cor_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), 
+                       name="Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(angle = 0)) +
+  labs(title = "Correlation Matrix of Selected Variables",
+       x = "", y = "")
+
+# Statistical Analysis
+# ANOVA for Calories Burned by Workout Type and Experience Level
+anova_result <- aov(Calories_Burned ~ Workout_Type * factor(Experience_Level), data = merged_data)
+summary(anova_result)
+
+# Linear regression for Rating vs Calories Burned
+lm_model <- lm(Calories_Burned ~ Rating + Age + Gender + Experience_Level, data = merged_data)
+summary(lm_model)
+
+# T-test for Calories Burned between genders
+t_test_result <- t.test(Calories_Burned ~ Gender, data = merged_data)
+print(t_test_result)
+
+# Summary statistics
+summary_stats <- merged_data %>%
+  group_by(Workout_Type, Gender, Experience_Level) %>%
+  summarize(
+    Avg_Calories = mean(Calories_Burned, na.rm = TRUE),
+    Avg_Heart_Rate = mean(Avg_BPM, na.rm = TRUE),
+    Avg_Rating = mean(Rating, na.rm = TRUE)
+  )
+
+print(summary_stats)
+```
+
