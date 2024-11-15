@@ -55,7 +55,7 @@ type_gym_counts
 
 
 # Boxplot of Calories Burned by the specified exercise types
-ggplot(gym_members_data, aes(x = Workout_Type, y = Calories_Burned)) 
+ggplot(gym_members_data, aes(x = Workout_Type, y = Calories_Burned)) +
   geom_boxplot(fill = "skyblue") +
   labs(title = "Calories Burned by Selected Exercise Types", x = "Exercise Type", y = "Calories Burned") +
   theme_minimal()
@@ -204,4 +204,79 @@ summary_stats <- merged_data %>%
 
 print(summary_stats)
 ```
+```{r}
+#Santi
+library(ggplot2)
 
+ggplot(data = gym_members_data, aes(x = Calories_Burned, y = Fat_Percentage, color = Fat_Percentage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  labs(title = "Calories Burned vs Fat Percentage",
+       x = "Calories Burned",
+       y = "Fat Percentage") +
+  scale_color_gradient(low = "green", high = "red") +  
+  theme_minimal()
+```
+The scatter plot shows a negative relationship between Calories Burned and Fat Percentage, indicating that individuals who burn more calories tend to have lower fat percentages. The color gradient from red to green represents varying fat percentage levels, with higher fat percentages in red and lower in green. The line of best fit reinforces this inverse relationship, showing a clear downward trend. This suggests that higher calorie expenditure is associated with a reduction in fat percentage, supporting the idea that increased physical activity (resulting in higher calories burned) could be an effective factor in lowering body fat.
+
+```{r}
+#Santi
+library(ggplot2)
+
+ggplot(data = gym_members_data, aes(x = `Water_Intake (liters)`, y = Fat_Percentage, color = Fat_Percentage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  labs(title = "Water Intake vs Fat Percentage",
+       x = "Water Intake (liters)",
+       y = "Fat Percentage") +
+  scale_color_gradient(low = "green", high = "red") +  
+  theme_minimal()
+```
+The scatter plot displays the relationship between Water Intake and Fat Percentage, with a clear negative trend shown by the line of best fit. This indicates that as water intake increases, fat percentage tends to decrease. The color gradient, which represents fat percentage levels, also reveals that individuals with higher water intake generally have lower fat percentages (as indicated by the shift from red to green). This suggests that increased water consumption may be associated with lower body fat, potentially due to its role in supporting metabolism and overall health. However, while there is a visible association, further investigation would be needed to determine causality.
+
+```{r}
+#Santi
+library(GGally)
+
+selected_gym_members_data <- gym_members_data[, c("Calories_Burned", "Water_Intake (liters)", "Fat_Percentage", "Age", "BMI")]
+
+ggcorr(selected_gym_members_data, label = TRUE, label_round = 2, label_size = 3,
+       name = "Correlation", palette = "RdBu", limits = c(-1, 1)) +
+  labs(title = "Correlation Matrix") +
+  theme_minimal()
+
+```
+The correlation matrix displays the relationships among several variables: Calories Burned, Water Intake, Fat Percentage, Age, and BMI. Key observations include:
+
+- Calories Burned and Fat Percentage have a moderate negative correlation of -0.6, indicating that as calories burned increases, fat percentage tends to decrease.
+- Water Intake and Fat Percentage show a negative correlation of -0.59, suggesting that higher water intake is associated with a lower fat percentage.
+- Age and Fat Percentage have a near-zero correlation, implying no strong relationship between age and fat percentage in this dataset.
+- BMI has a slight positive correlation with Water Intake (0.21) and a negligible negative correlation with Fat Percentage (-0.12), suggesting BMI does not strongly influence fat percentage in this context.
+
+Overall, the matrix suggests that both calories burned and water intake have notable associations with fat percentage, while age and BMI show little to no direct relationship with fat percentage. This implies that lifestyle factors like exercise and hydration may be more influential than age in determining fat percentage in this dataset.
+
+```{r}
+#Santi
+library(ggplot2)
+
+ggplot(data = gym_members_data, aes(x = Calories_Burned, y = `Water_Intake (liters)`, 
+                                    color = Fat_Percentage, size = Age)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Calories Burned vs Water Intake (liters)",
+       x = "Calories Burned",
+       y = "Water Intake (liters)",
+       color = "Fat Percentage",
+       size = "Age") +
+  scale_color_gradient(low = "green", high = "red") +  # Color gradient based on Fat Percentage
+  theme_minimal()
+
+```
+This scatter plot illustrates the relationship between Calories Burned and Water Intake with Fat Percentage represented by color and Age by point size. We observe a few key patterns:
+
+- Calories Burned vs. Water Intake: There isn’t a strong trend between calories burned and water intake, as the points are scattered across various levels of water intake regardless of the calories burned. This suggests that water intake might not directly correlate with the number of calories burned in this dataset.
+
+- Fat Percentage (Color): The color gradient indicates that individuals with higher fat percentages (in red) tend to cluster around lower calories burned, while those with lower fat percentages (in green) appear more often in the higher-calories-burned range. This supports the idea that higher physical activity (higher calories burned) may contribute to lower body fat.
+
+- Age (Size): There is no clear age-related trend in the relationship between calories burned and water intake. Different ages are represented throughout the scatter plot, indicating that age does not strongly influence these two variables in relation to each other.
+
+In summary, while water intake doesn’t show a direct correlation with calories burned, both factors individually appear to influence fat percentage, with higher calorie burn associated with lower fat percentage.
