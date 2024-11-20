@@ -38,9 +38,6 @@ view(metadata)
 
 
 ```{r}
-
-
-# Function to create a bar chart for average values
 generate_avg_bar_chart <- function(data, group_col, avg_col, title, x_label, y_label, fill_color = "steelblue") {
   ggplot(data, aes_string(x = group_col, y = avg_col)) +
     stat_summary(fun = "mean", geom = "bar", fill = fill_color, color = "black") +
@@ -70,7 +67,7 @@ avg_price_country <- generate_avg_bar_chart(
   title = "Average Price per Country",
   x_label = "Country",
   y_label = "Average Price",
-  fill_color = "coral"
+  fill_color = "slategrey"
 )
 
 print(avg_price_country)
