@@ -75,6 +75,46 @@ print(avg_price_country)
 ```
 
 
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Function to create a bar chart for counts
+generate_count_bar_chart <- function(data, group_col, title, x_label, y_label, fill_color = "steelblue") {
+  ggplot(data, aes_string(x = group_col)) +
+    geom_bar(fill = fill_color, color = "black") +
+    labs(title = title, x = x_label, y = y_label) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = ifelse(group_col == "Country", 45, 0), hjust = 1))
+}
+
+# Generate bar chart for count of resorts per continent
+count_resorts_continent <- generate_count_bar_chart(
+  data = resort_df,
+  group_col = "Continent",
+  title = "Count of Resorts per Continent",
+  x_label = "Continent",
+  y_label = "Count of Resorts",
+  fill_color = "steelblue"
+)
+
+# Display the first chart
+print(count_resorts_continent)
+
+# Generate bar chart for count of resorts per country
+count_resorts_country <- generate_count_bar_chart(
+  data = resort_df,
+  group_col = "Country",
+  title = "Count of Resorts per Country",
+  x_label = "Country",
+  y_label = "Count of Resorts",
+  fill_color = "coral"
+)
+
+# Display the second chart
+print(count_resorts_country)
+
+```
 
 
 
