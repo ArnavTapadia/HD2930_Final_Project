@@ -15,7 +15,6 @@ library(ggplot2)
 library(dplyr)
 library(knitr)
 library(geosphere)  # For Haversine distance calculations
-library(maps)
 
 ```
 
@@ -104,6 +103,18 @@ It is clear that there are many more snow observation locations across the whole
 # Rename ID column to Resort_ID
 resort_df <- resort_df %>%
   rename(Resort_ID = ID)
+
+# Count unique latitude and longitude values
+unique_latitudes <- snow_df %>%
+  summarise(unique_lat = n_distinct(Latitude)) %>%
+  pull(unique_lat)
+
+unique_longitudes <- snow_df %>%
+  summarise(unique_lon = n_distinct(Longitude)) %>%
+  pull(unique_lon)
+
+cat("Number of unique latitudes:", unique_latitudes, "\n")
+cat("Number of unique longitudes:", unique_longitudes, "\n")
 
 ```
 
