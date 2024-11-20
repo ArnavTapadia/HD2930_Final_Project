@@ -1,0 +1,624 @@
+---
+title: "GYM Data Analysis"
+author: "Arnav, Sam, Quinn, and Santiago"
+date: today
+format: pdf
+editor: source
+---
+
+# Question 1
+
+For lab credit, submit at least one table or figure from (some of?) the data that you plan to use for the final
+project. Describe the data in the figure or the values in the table.
+
+Choosing your research question and data is a very important step. Try to choose something that you care
+about and that you can use to practice and further develop your data science skills.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+```
+
+With this data set we are considering taking the approach of "being" a personal trainer who is analyzing this data set in order to best determine what types of lessons to offer for what specific person.
+
+```{r}
+
+gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
+
+mega_gym_data <- read_csv("megaGymDataset.csv")
+
+head(gym_members_data)
+head(mega_gym_data)
+```
+
+```{r}
+
+type_mega_counts <- mega_gym_data %>%
+  count(Type) %>%
+  arrange(desc(n))
+
+# View the results
+type_mega_counts
+
+
+type_gym_counts <- gym_members_data %>%
+  count(Workout_Type) %>%
+  arrange(desc(n))
+
+# View the results
+type_gym_counts
+```
+
+```{r}
+
+
+# Boxplot of Calories Burned by the specified exercise types
+ggplot(gym_members_data, aes(x = Workout_Type, y = Calories_Burned)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Calories Burned by Selected Exercise Types", x = "Exercise Type", y = "Calories Burned") +
+  theme_minimal()
+```
+
+
+in these two bar plots below we had each data set be counted by the type of workout. What we can see is that for Mega Counts strength workouts are a lot more common with 2,545 followed by stretching with only 147. This story continues for the Gym Counts as strength is the most common one but not by nearly as large as a margin as we see that the count is 258 and is followed by Cardio with 255. The two graphics below help display this better.
+
+```{r}
+
+ggplot(type_mega_counts, aes(x = reorder(Type, -n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Workout Type Counts in Mega Gym Data",
+       x = "Workout Type",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Plot for type_gym_counts
+ggplot(type_gym_counts, aes(x = reorder(Workout_Type, -n), y = n)) +
+  geom_bar(stat = "identity", fill = "darkorange") +
+  labs(title = "Workout Type Counts in Gym Members Data",
+       x = "Workout Type",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Research Question
+
+Quinn: How does the type of exercise and experience level influence calorie burn and heart rate metrics across different age groups and genders, and is there a correlation with the exercise ratings provided by gym members?
+
+Arnav: given a person's heart rate, gender, other demographic data what type of workout is recommended? Is there a relation between the type of workouts and a person's biographical data (age heart rate etc)?
+
+Santiago: How does the number of Calories Burned and Water Intake affect Fat Percentage, how correlated or causal? Does age also influence?
+
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(corrplot)
+
+merged_data <- gym_members_data %>%
+  left_join(mega_gym_data, by = c("Workout_Type" = "Type"))
+
+# age groups
+merged_data <- merged_data %>%
+  mutate(Age_Group = cut(Age, breaks = c(0, 20, 30, 40, 50, 60, Inf),
+                         labels = c("0-20", "21-30", "31-40", "41-50", "51-60", "60+")))
+
+
+# Visualization 1
+ggplot(merged_data, aes(x = Workout_Type, y = Calories_Burned, fill = factor(Experience_Level))) +
+  geom_boxplot() +
+  facet_wrap(~Age_Group) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Calories Burned by Workout Type and Experience Level",
+       x = "Workout Type", y = "Calories Burned", fill = "Experience Level")
+
+# Visualization 2
+ggplot(merged_data, aes(x = Workout_Type, y = Avg_BPM, fill = Gender)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Average Heart Rate by Workout Type and Gender",
+       x = "Workout Type", y = "Average BPM")
+
+# Visualization 3
+ggplot(merged_data, aes(x = Rating, y = Calories_Burned)) +
+  geom_point(aes(color = Workout_Type), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  facet_wrap(~Experience_Level) +
+  labs(title = "Correlation between Exercise Rating and Calories Burned",
+       x = "Exercise Rating", y = "Calories Burned")
+
+# Visualization 4
+ggplot(merged_data, aes(x = Age_Group, y = Max_BPM, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "Maximum Heart Rate by Age Group and Gender",
+       x = "Age Group", y = "Max BPM")
+
+# Visualization 5
+calories_heatmap <- merged_data %>%
+  group_by(Workout_Type, Experience_Level) %>%
+  summarize(Avg_Calories = mean(Calories_Burned, na.rm = TRUE))
+
+ggplot(calories_heatmap, aes(x = Workout_Type, y = factor(Experience_Level), fill = Avg_Calories)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Average Calories Burned by Workout Type and Experience Level",
+       x = "Workout Type", y = "Experience Level")
+
+# Visualization 6
+ggplot(merged_data, aes(x = `Session_Duration (hours)`, y = Calories_Burned, color = Workout_Type)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~Gender) +
+  labs(title = "Session Duration vs Calories Burned by Gender and Workout Type",
+       x = "Session Duration (hours)", y = "Calories Burned")
+
+# Visualization 7:
+cor_vars <- c("Calories_Burned", "Max_BPM", "Avg_BPM", "Resting_BPM", "Session_Duration (hours)", "BMI", "Fat_Percentage", "Workout_Frequency (days/week)")
+
+# correlation matrix
+cor_matrix <- cor(merged_data[, cor_vars], use = "complete.obs")
+
+# heatmap
+library(reshape2)  # For melting the correlation matrix
+cor_melted <- melt(cor_matrix)
+
+#heatmap
+ggplot(cor_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), 
+                       name="Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(angle = 0)) +
+  labs(title = "Correlation Matrix of Selected Variables",
+       x = "", y = "")
+
+# Statistical Analysis
+# ANOVA for Calories Burned by Workout Type and Experience Level
+anova_result <- aov(Calories_Burned ~ Workout_Type * factor(Experience_Level), data = merged_data)
+summary(anova_result)
+
+# Linear regression for Rating vs Calories Burned
+lm_model <- lm(Calories_Burned ~ Rating + Age + Gender + Experience_Level, data = merged_data)
+summary(lm_model)
+
+# T-test for Calories Burned between genders
+t_test_result <- t.test(Calories_Burned ~ Gender, data = merged_data)
+print(t_test_result)
+
+# Summary statistics
+summary_stats <- merged_data %>%
+  group_by(Workout_Type, Gender, Experience_Level) %>%
+  summarize(
+    Avg_Calories = mean(Calories_Burned, na.rm = TRUE),
+    Avg_Heart_Rate = mean(Avg_BPM, na.rm = TRUE),
+    Avg_Rating = mean(Rating, na.rm = TRUE)
+  )
+
+print(summary_stats)
+```
+```{r}
+#Santi
+library(ggplot2)
+
+ggplot(data = gym_members_data, aes(x = Calories_Burned, y = Fat_Percentage, color = Fat_Percentage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  labs(title = "Calories Burned vs Fat Percentage",
+       x = "Calories Burned",
+       y = "Fat Percentage") +
+  scale_color_gradient(low = "green", high = "red") +  
+  theme_minimal()
+```
+The scatter plot shows a negative relationship between Calories Burned and Fat Percentage, indicating that individuals who burn more calories tend to have lower fat percentages. The color gradient from red to green represents varying fat percentage levels, with higher fat percentages in red and lower in green. The line of best fit reinforces this inverse relationship, showing a clear downward trend. This suggests that higher calorie expenditure is associated with a reduction in fat percentage, supporting the idea that increased physical activity (resulting in higher calories burned) could be an effective factor in lowering body fat.
+
+```{r}
+#Santi
+library(ggplot2)
+
+ggplot(data = gym_members_data, aes(x = `Water_Intake (liters)`, y = Fat_Percentage, color = Fat_Percentage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  labs(title = "Water Intake vs Fat Percentage",
+       x = "Water Intake (liters)",
+       y = "Fat Percentage") +
+  scale_color_gradient(low = "green", high = "red") +  
+  theme_minimal()
+```
+The scatter plot displays the relationship between Water Intake and Fat Percentage, with a clear negative trend shown by the line of best fit. This indicates that as water intake increases, fat percentage tends to decrease. The color gradient, which represents fat percentage levels, also reveals that individuals with higher water intake generally have lower fat percentages (as indicated by the shift from red to green). This suggests that increased water consumption may be associated with lower body fat, potentially due to its role in supporting metabolism and overall health. However, while there is a visible association, further investigation would be needed to determine causality.
+
+```{r}
+#Santi
+library(GGally)
+
+selected_gym_members_data <- gym_members_data[, c("Calories_Burned", "Water_Intake (liters)", "Fat_Percentage", "Age", "BMI")]
+
+ggcorr(selected_gym_members_data, label = TRUE, label_round = 2, label_size = 3,
+       name = "Correlation", palette = "RdBu", limits = c(-1, 1)) +
+  labs(title = "Correlation Matrix") +
+  theme_minimal()
+
+```
+The correlation matrix displays the relationships among several variables: Calories Burned, Water Intake, Fat Percentage, Age, and BMI. Key observations include:
+
+- Calories Burned and Fat Percentage have a moderate negative correlation of -0.6, indicating that as calories burned increases, fat percentage tends to decrease.
+- Water Intake and Fat Percentage show a negative correlation of -0.59, suggesting that higher water intake is associated with a lower fat percentage.
+- Age and Fat Percentage have a near-zero correlation, implying no strong relationship between age and fat percentage in this dataset.
+- BMI has a slight positive correlation with Water Intake (0.21) and a negligible negative correlation with Fat Percentage (-0.12), suggesting BMI does not strongly influence fat percentage in this context.
+
+Overall, the matrix suggests that both calories burned and water intake have notable associations with fat percentage, while age and BMI show little to no direct relationship with fat percentage. This implies that lifestyle factors like exercise and hydration may be more influential than age in determining fat percentage in this dataset.
+
+```{r}
+#Santi
+library(ggplot2)
+
+ggplot(data = gym_members_data, aes(x = Calories_Burned, y = `Water_Intake (liters)`, 
+                                    color = Fat_Percentage, size = Age)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Calories Burned vs Water Intake (liters)",
+       x = "Calories Burned",
+       y = "Water Intake (liters)",
+       color = "Fat Percentage",
+       size = "Age") +
+  scale_color_gradient(low = "green", high = "red") +  # Color gradient based on Fat Percentage
+  theme_minimal()
+
+```
+This scatter plot illustrates the relationship between Calories Burned and Water Intake with Fat Percentage represented by color and Age by point size. We observe a few key patterns:
+
+- Calories Burned vs. Water Intake: There isn’t a strong trend between calories burned and water intake, as the points are scattered across various levels of water intake regardless of the calories burned. This suggests that water intake might not directly correlate with the number of calories burned in this dataset.
+
+- Fat Percentage (Color): The color gradient indicates that individuals with higher fat percentages (in red) tend to cluster around lower calories burned, while those with lower fat percentages (in green) appear more often in the higher-calories-burned range. This supports the idea that higher physical activity (higher calories burned) may contribute to lower body fat.
+
+- Age (Size): There is no clear age-related trend in the relationship between calories burned and water intake. Different ages are represented throughout the scatter plot, indicating that age does not strongly influence these two variables in relation to each other.
+
+In summary, while water intake doesn’t show a direct correlation with calories burned, both factors individually appear to influence fat percentage, with higher calorie burn associated with lower fat percentage.
+
+
+## Arnav Visualizations
+
+Arnav: given a person's heart rate, gender, other demographic data what type of workout are they likely to do? - this could be a good question for gym builders who are deciding what types of workouts to include in their gym given a target demographic? Is there a relation between the type of workouts and a person's biographical data (age heart rate etc)?
+
+Secondary question: given a person's biographical data, can we predict the amount of calories burned in each of the workout types? Then, given a person's goals (in terms of calories burned) we can determine what workout is best to recommend for them? Potentially we can even extend this to recommending workout frequency and even - using the other dataset - what exercises are recommended?
+
+Using the mega_gym_data set, we can try clustering algorithms based on workout Type, Body Part, Equipment, and level to determine rating?
+
+```{r}
+
+#First we clean the variable names
+gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
+
+units <- names(gym_members_data) |>
+  str_extract("\\((.*)\\)") |>  # Extract text inside parentheses
+  str_remove_all("[()]")         # Remove parentheses
+
+# Clean column names (remove units and parentheses)
+cleaned_names <- names(gym_members_data) |>
+  str_replace("\\s*\\(.*\\)", "") |>  # Remove parentheses and their contents
+  str_replace_all("\\s+", "_") |>     # Replace spaces with underscores
+  tolower()                            # Convert to lowercase
+
+# Create a metadata table
+metadata <- data.frame(
+  original_name = names(gym_members_data),
+  clean_name = cleaned_names,
+  units = units,
+  stringsAsFactors = FALSE
+)
+
+# Apply cleaned names to the dataset
+names(gym_members_data) <- cleaned_names
+
+# View the metadata table
+print(metadata)
+
+
+
+# now we make violin plots to understand the workout people
+
+generate_density_plots <- function(data, metrics, group_var, facet_var, title_prefix = "Density Plot") {
+  # Define a labeller for experience levels
+  experience_level_labels <- c(
+    "1" = "Beginner",
+    "2" = "Intermediate",
+    "3" = "Expert"
+  )
+  
+  # Loop through each metric and generate a plot
+  plots <- lapply(metrics, function(metric) {
+    ggplot(data, aes_string(x = metric, color = group_var, fill = group_var)) +
+      geom_density(alpha = 0.5) +
+      facet_wrap(as.formula(paste("~", facet_var)), scales = "free", labeller = as_labeller(experience_level_labels)) +
+      labs(
+        title = paste(title_prefix, metric),
+        x = metric,
+        y = "Density",
+        color = group_var,
+        fill = group_var
+      ) +
+      scale_fill_manual(values = c("Male" = "blue", "Female" = "red")) +
+      scale_color_manual(values = c("Male" = "blue", "Female" = "red")) +
+      theme_minimal() +
+      theme(
+        legend.position = "top",
+        strip.text = element_text(size = 12, face = "bold"),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+      )
+  })
+  
+  return(plots)
+}
+
+# List of metrics to visualize
+metrics <- c("bmi", "height", "weight", "resting_bpm", "calories_burned")
+
+# Generate density plots
+density_plots <- generate_density_plots(
+  data = gym_members_data,
+  metrics = metrics,
+  group_var = "gender",
+  facet_var = "experience_level",
+  title_prefix = "Density Plot for"
+)
+
+# Print each plot
+for (plot in density_plots) {
+  print(plot)
+}
+
+```
+
+```{r}
+# Define the features to plot
+continuous_features <- c("age", "bmi", "resting_bpm", "calories_burned")
+categorical_features <- c("gender", "experience_level")
+generate_density_plots <- function(data, features, group_var, title_prefix = "Density Plot for") {
+  plots <- lapply(features, function(feature) {
+    ggplot(data, aes_string(x = feature, fill = group_var, color = group_var)) +
+      geom_density(alpha = 0.3, size = 1.2) +  # Added size for outline
+      labs(
+        title = paste(title_prefix, feature),
+        x = feature,
+        y = "Density",
+        fill = group_var,
+        color = group_var
+      ) +
+      scale_fill_brewer(palette = "Set1") +  # Brighter palette
+      scale_color_brewer(palette = "Set1") +
+      theme_minimal() +
+      theme(
+        legend.position = "top",
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )
+  })
+  return(plots)
+}
+
+# Function to generate normalized bar plots for categorical features
+generate_normalized_bar_plots <- function(data, features, group_var, title_prefix = "Normalized Bar Plot for") {
+  plots <- lapply(features, function(feature) {
+    # Calculate proportions for normalization
+    normalized_data <- data %>%
+      group_by(!!sym(feature), !!sym(group_var)) %>%
+      summarise(count = n(), .groups = "drop") %>%
+      group_by(!!sym(feature)) %>%
+      mutate(proportion = count / sum(count))
+    
+    ggplot(normalized_data, aes_string(x = feature, y = "proportion", fill = group_var)) +
+      geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+      labs(
+        title = paste(title_prefix, feature),
+        x = feature,
+        y = "Proportion",
+        fill = group_var
+      ) +
+      scale_fill_brewer(palette = "Set3") +
+      theme_minimal() +
+      theme(
+        legend.position = "top",
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )
+  })
+  return(plots)
+}
+
+# Generate density plots
+density_plots <- generate_density_plots(
+  data = gym_members_data,
+  features = continuous_features,
+  group_var = "workout_type"
+)
+
+# Generate normalized bar plots
+normalized_bar_plots <- generate_normalized_bar_plots(
+  data = gym_members_data,
+  features = categorical_features,
+  group_var = "workout_type"
+)
+
+# Display density plots
+for (plot in density_plots) {
+  print(plot)
+}
+
+# Display normalized bar plots
+for (plot in normalized_bar_plots) {
+  print(plot)
+}
+```
+
+```{r}
+# Predictor for the workout a person is likely to do given some demographics about themselves
+
+gym_members_data <- gym_members_data %>%
+  mutate(workout_type = factor(workout_type),
+         gender = factor(gender),
+         experience_level = factor(experience_level))
+
+library(e1071)  # Naive Bayes
+library(rpart)  # Decision Tree
+
+
+set.seed(123)
+train_indices <- sample(seq_len(nrow(gym_members_data)), size = 0.8 * nrow(gym_members_data))
+training_data <- gym_members_data[train_indices, ]
+testing_data <- gym_members_data[-train_indices, ]
+
+# Define predictors as a character vector
+predictors <- c("age", "gender", "bmi", "resting_bpm", "experience_level")
+
+# Create the formula dynamically
+formula <- as.formula(paste("workout_type ~", paste(predictors, collapse = " + ")))
+
+# ----------------------------------------------
+# 1. Naive Bayes Model
+# ----------------------------------------------
+
+# Fit Naive Bayes Model
+naive_bayes_model <- naiveBayes(
+  formula,
+  data = training_data
+)
+
+# Predict on the test set using Naive Bayes
+naive_preds <- predict(naive_bayes_model, newdata = testing_data)
+
+# Confusion Matrix for Naive Bayes
+naive_conf_mat <- table(testing_data$workout_type, naive_preds)
+print("Naive Bayes Confusion Matrix:")
+print(naive_conf_mat)
+
+# Accuracy for Naive Bayes
+naive_accuracy <- sum(diag(naive_conf_mat)) / sum(naive_conf_mat)
+cat("Naive Bayes Accuracy:", round(naive_accuracy * 100, 2), "%\n")
+
+# ----------------------------------------------
+# 2. Decision Tree Model
+# ----------------------------------------------
+
+# Fit Decision Tree Model
+decision_tree_model <- rpart(
+  formula,
+  data = training_data,
+  method = "class"
+)
+
+# Predict on the test set using Decision Tree
+tree_preds <- predict(decision_tree_model, newdata = testing_data, type = "class")
+
+# Confusion Matrix for Decision Tree
+tree_conf_mat <- table(testing_data$workout_type, tree_preds)
+print("Decision Tree Confusion Matrix:")
+print(tree_conf_mat)
+
+# Accuracy for Decision Tree
+tree_accuracy <- sum(diag(tree_conf_mat)) / sum(tree_conf_mat)
+cat("Decision Tree Accuracy:", round(tree_accuracy * 100, 2), "%\n")
+
+# ----------------------------------------------
+# Model Comparison
+# ----------------------------------------------
+
+cat("Model Comparison:\n")
+cat("Naive Bayes Accuracy:", round(naive_accuracy * 100, 2), "%\n")
+cat("Decision Tree Accuracy:", round(tree_accuracy * 100, 2), "%\n")
+
+
+```
+```{r}
+# predicting calories burned based on a person's biographical/demographic data 
+
+# Split into training and testing sets (80/20 split)
+set.seed(42)
+train_indices <- sample(seq_len(nrow(data)), size = 0.8 * nrow(data))
+training_data <- data[train_indices, ]
+testing_data <- data[-train_indices, ]
+
+# Fit the linear regression model
+linear_model <- lm(calories_burned ~ age + gender + bmi + resting_bpm + experience_level + workout_type, 
+                   data = training_data)
+
+# Display the model summary
+summary(linear_model)
+
+# Calculate the average calories burned for each workout type in the training data
+naive_model <- training_data %>%
+  group_by(workout_type) %>%
+  summarise(avg_calories = mean(calories_burned, na.rm = TRUE))
+
+# Add the naive predictions to the testing data
+testing_data <- testing_data %>%
+  left_join(naive_model, by = "workout_type") %>%
+  rename(naive_predicted_calories = avg_calories)
+
+# Predict calories burned on the testing data using the linear regression model
+testing_data$linear_predicted_calories <- predict(linear_model, newdata = testing_data)
+
+# Calculate RMSE for the linear model
+linear_rmse <- sqrt(mean((testing_data$calories_burned - testing_data$linear_predicted_calories)^2))
+
+# Calculate RMSE for the naive model
+naive_rmse <- sqrt(mean((testing_data$calories_burned - testing_data$naive_predicted_calories)^2))
+
+# Print RMSEs for comparison
+cat("Linear Model RMSE:", round(linear_rmse, 2), "\n")
+cat("Naive Model RMSE:", round(naive_rmse, 2), "\n")
+
+```
+```{r}
+recommend_workout <- function(new_person, calorie_goal, linear_model) {
+  # Get unique workout types
+  workout_types <- levels(data$workout_type)
+  
+  # Predict calories burned for each workout type using the linear model
+  predictions <- sapply(workout_types, function(type) {
+    new_person$workout_type <- factor(type, levels = levels(data$workout_type))
+    predict(linear_model, newdata = new_person)
+  })
+  
+  # Create a data frame for all predictions
+  predictions_df <- data.frame(
+    Workout_Type = workout_types,
+    Predicted_Calories_Burned = round(predictions, 2)  # Round for readability
+  )
+  
+  # Find the workout type closest to the calorie goal
+  recommended_index <- which.min(abs(predictions - calorie_goal))
+  recommended_type <- workout_types[recommended_index]
+  
+  # Print all predictions
+  cat("Calories Burned for Each Workout Type:\n")
+  print(predictions_df)
+  
+  # Return the recommended workout type
+  return(list(
+    Recommended_Workout = recommended_type,
+    All_Workout_Predictions = predictions_df
+  ))
+}
+
+# Example usage
+new_person <- data.frame(
+  age = 20,
+  gender = factor("Male", levels = levels(data$gender)),
+  bmi = 25,
+  resting_bpm = 70,
+  experience_level = "3",
+  workout_type = factor(NA, levels = levels(data$workout_type))  # Placeholder for prediction
+)
+calorie_goal <- 500
+recommendation <- recommend_workout(new_person, calorie_goal, linear_model)
+
+# Print the recommendation
+cat("Recommended Workout Type:", recommendation$Recommended_Workout, "\n")
+```
+

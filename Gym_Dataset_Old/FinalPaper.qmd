@@ -1,0 +1,64 @@
+---
+title: "Gym Data Analysis - Final Paper"
+author: "Arnav, Sam, Quinn, and Santiago"
+date: today
+format: pdf
+editor: source
+---
+
+
+```{r, message=FALSE}
+#| label: Installing-packages
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+
+```
+
+```{r}
+#| label: reading-data
+
+gym_members_data <- read_csv("gym_members_exercise_tracking.csv")
+
+mega_gym_data <- read_csv("megaGymDataset.csv")
+
+head(gym_members_data)
+head(mega_gym_data)
+```
+
+```{r}
+#| label: cleaning-data
+
+units <- names(gym_members_data) |>
+  str_extract("\\((.*)\\)") |>  # Extract text inside parentheses
+  str_remove_all("[()]")         # Remove parentheses
+
+# Clean column names (remove units and parentheses)
+cleaned_names <- names(gym_members_data) |>
+  str_replace("\\s*\\(.*\\)", "") |>  # Remove parentheses and their contents
+  str_replace_all("\\s+", "_") |>     # Replace spaces with underscores
+  tolower()                            # Convert to lowercase
+
+# Create a metadata table
+metadata <- data.frame(
+  original_name = names(gym_members_data),
+  clean_name = cleaned_names,
+  units = units,
+  stringsAsFactors = FALSE
+)
+
+# Apply cleaned names to the dataset
+names(gym_members_data) <- cleaned_names
+
+# View the metadata table
+print(metadata)
+```
+
+#Exploratory Data Analysis
+
+```{r}
+
+```
+
