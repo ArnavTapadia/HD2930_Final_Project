@@ -191,4 +191,48 @@ print(count_resorts_country)
 ```
 
 
+```{r}
+library(patchwork)
+
+# Helper function to create pie charts
+create_pie_chart <- function(data, title) {
+  df <- as.data.frame(data)
+  colnames(df) <- c("Response", "Percentage")
+  ggplot(df, aes(x = "", y = Percentage, fill = Response)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    theme_void() +
+    labs(title = title, fill = "Response") +
+    theme(plot.title = element_text(hjust = 0.5))
+}
+
+# Generate individual pie charts
+child_friendly_plot <- create_pie_chart(child_friendly_data, "Child Friendly")
+snowparks_plot <- create_pie_chart(snowparks_data, "Availability of Snowparks")
+summer_plot <- create_pie_chart(summer_data, "Availability of Summer Skiing")
+nightskiing_plot <- create_pie_chart(nightskiing_data, "Availability of Nightskiing")
+
+# Combine the pie charts into one plot
+combined_plot <- (child_friendly_plot | snowparks_plot) / (summer_plot | nightskiing_plot)
+
+# Display the combined plot
+print(combined_plot)
+```
+```{r}
+resort_df$slope_level_ratios <- paste(
+  round(resort_df$`Beginner slopes` / resort_df$`Total slopes`, 1),
+  round(resort_df$`Intermediate slopes` / resort_df$`Total slopes`, 1),
+  round(resort_df$`Difficult slopes` / resort_df$`Total slopes`, 1),
+  sep = "-"
+)
+
+# View the updated dataset
+head(resort_df)
+
+
+#calculating the average ratios in the top 10 countries with the most resorts
+#displaying the average ratio breakup in those countries
+
+
+```
 
