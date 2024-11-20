@@ -14,6 +14,7 @@ library(tidymodels)
 library(ggplot2)
 library(dplyr)
 library(knitr)
+library(geosphere)  # For Haversine distance calculations
 
 ```
 
@@ -40,11 +41,113 @@ Dataset was found on https://www.mavenanalytics.io/data-playground?order=date_ad
 ```
 
 ```{r}
-| label: merging-datasets
+#| label: merging-datasets
+#plot the latitude and longitude of resorts as well as the latitude and longitude in the snow dataset with a different color
 
+# Extract unique latitude and longitude from the snow dataset
+unique_snow_df <- snow_df %>%
+  distinct(Latitude, Longitude)
+
+# Plot the latitudes and longitudes with separate layers and a legend
+ggplot() +
+  geom_point(data = unique_snow_df, aes(x = Longitude, y = Latitude, color = "Snow Observation Locations"), 
+             alpha = 0.7, size = 2, shape = 16) +
+  geom_point(data = resort_df, aes(x = Longitude, y = Latitude, color = "Resort Locations"), 
+             alpha = 0.7, size = 3, shape = 17) +
+  scale_color_manual(
+    values = c("Resort Locations" = "blue", "Snow Observation Locations" = "red"),
+    name = "Dataset"
+  ) +
+  labs(
+    title = "Resorts and Snow Data: Latitude and Longitude",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 ```
+It is clear that there are many more snow observation locations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
 
+```{r}
+# Rename ID column to Resort_ID
+resort_df <- resort_df %>%
+  rename(Resort_ID = ID)
+
+# Function to assign resort IDs to snow observations
+assign_resort_id <- function(snow_data, resort_data, tolerance_km = 10) {
+  # Initialize a column for the closest Resort_ID
+  snow_data$Resort_ID <- NA
+  
+  # Loop through each snow observation
+  for (i in seq_len(nrow(snow_data))) {
+    # Extract latitude and longitude of the snow observation
+    snow_lat <- snow_data$Latitude[i]
+    snow_lon <- snow_data$Longitude[i]
+    
+    # Calculate distances to all resorts
+    distances <- distHaversine(
+      cbind(resort_data$Longitude, resort_data$Latitude),
+      c(snow_lon, snow_lat)
+    ) / 1000  # Convert meters to kilometers
+    
+    # Check if any resort is within the tolerance
+    if (any(distances <= tolerance_km)) {
+      # Assign the ID of the closest resort
+      snow_data$Resort_ID[i] <- resort_data$Resort_ID[which.min(distances)]
+    } else {
+      # No resort within tolerance, assign NA
+      snow_data$Resort_ID[i] <- NA
+    }
+  }
+  
+  return(snow_data)
+}
+
+# Match the snow observations to the closest resort within a 10 km tolerance
+matched_snow_df <- assign_resort_id(snow_df, resort_df, tolerance_km = 10)
+
+# View the resulting dataset
+print(head(matched_snow_df))
+
+# Summarize matched and unmatched observations
+summary_table <- matched_snow_df %>%
+  summarise(
+    Total_Observations = n(),
+    Matched_Observations = sum(!is.na(Resort_ID)),
+    Unmatched_Observations = sum(is.na(Resort_ID))
+  )
+
+# Display the summary
+print(summary_table)
+
+# Visualize the matched data
+ggplot() +
+  geom_point(data = resort_df, aes(x = Longitude, y = Latitude), color = "blue", size = 3, alpha = 0.7, shape = 16) +
+  geom_point(data = matched_snow_df, aes(x = Longitude, y = Latitude, color = !is.na(Resort_ID)), 
+             alpha = 0.7, size = 2, shape = 17) +
+  scale_color_manual(
+    values = c("TRUE" = "green", "FALSE" = "red"),
+    labels = c("Matched", "Unmatched"),
+    name = "Snow Data Match"
+  ) +
+  labs(
+    title = "Matching Snow Observations to Resorts",
+    x = "Longitude",
+    y = "Latitude",
+    caption = "Green: Matched | Red: Unmatched | Blue: Resorts"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
 
 # Exploratory Data Analysis
 
