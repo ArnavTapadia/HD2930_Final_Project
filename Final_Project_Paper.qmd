@@ -1,0 +1,38 @@
+---
+title: "Ski Resort Data Analysis - Final Paper"
+author: "Arnav, Sam, Quinn, and Santiago"
+date: today
+format: pdf
+editor: source
+---
+
+
+```{r, message=FALSE}
+#| label: Installing-packages
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+
+```
+
+# Reading and Cleaning Data
+```{r}
+#| label: reading-data
+
+```
+
+```{r}
+#| label: cleaning-data
+
+```
+
+
+
+# Exploratory Data Analysis
+
+```{r}
+
+```
+
