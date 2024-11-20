@@ -101,8 +101,8 @@ It is clear that there are many more snow observation locations across the whole
 
 ```{r}
 # Rename ID column to Resort_ID
-resort_df <- resort_df %>%
-  rename(Resort_ID = ID)
+#resort_df <- resort_df %>%
+ # rename(Resort_ID = ID)
 
 # Count unique latitude and longitude values
 unique_latitudes <- snow_df %>%
@@ -115,6 +115,21 @@ unique_longitudes <- snow_df %>%
 
 cat("Number of unique latitudes:", unique_latitudes, "\n")
 cat("Number of unique longitudes:", unique_longitudes, "\n")
+
+# Bin the latitude and longitude, group by Month, and calculate average Snow
+binned_snow_df <- snow_df %>%
+  mutate(
+    lat_bin = floor(Latitude/5)*5,          # Bin latitude to nearest lower degree
+    lon_bin = floor(Longitude / 8) * 8 # Bin longitude to nearest lower 5 degrees
+  ) %>%
+  group_by(Month, lat_bin, lon_bin) %>%
+  summarise(
+    avg_snow = mean(Snow, na.rm = TRUE), # Average Snow for the bin
+    .groups = "drop"                     # Ungroup after summarise
+  )
+
+# View the resulting data frame
+print(binned_snow_df)
 
 ```
 
