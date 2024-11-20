@@ -22,6 +22,14 @@ library(knitr)
 #| label: reading-data
 resort_df <- read_csv("resorts.csv")
 snow_df <- read_csv("snow.csv")
+metadata <- read_csv("data_dictionary.csv")
+
+head(resort_df)
+head(snow_df)
+head(metadata)
+
+view(metadata)
+
 ```
 
 Dataset was found on https://www.mavenanalytics.io/data-playground?order=date_added%2Cdesc&search=ski%20resort. The csvs have been generated through webscraping from https://ski-resort-stats.com/ and the snow data come from https://nsidc.org/data/mod10cm/versions/61.
