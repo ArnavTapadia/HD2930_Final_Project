@@ -20,7 +20,8 @@ library(knitr)
 # Reading and Cleaning Data
 ```{r}
 #| label: reading-data
-
+resort_df <- read_csv("resorts.csv")
+snow_df <- read_csv("snow.csv")
 ```
 
 ```{r}
@@ -28,6 +29,9 @@ library(knitr)
 
 ```
 
+```{r}
+| label: merging-datasets
+```
 
 
 # Exploratory Data Analysis
