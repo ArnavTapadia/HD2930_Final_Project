@@ -219,12 +219,37 @@ print(count_resorts_country)
 
 ```{r}
 library(patchwork)
+library(ggplot2)
+library(dplyr)
+
+# Calculate proportions for each feature
+child_friendly_data <- resort_df %>%
+  summarise(Yes = sum(`Child friendly` == "Yes", na.rm = TRUE),
+            No = sum(`Child friendly` == "No", na.rm = TRUE)) %>%
+  gather(key = "Response", value = "Count") %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+snowparks_data <- resort_df %>%
+  summarise(Yes = sum(Snowparks == "Yes", na.rm = TRUE),
+            No = sum(Snowparks == "No", na.rm = TRUE)) %>%
+  gather(key = "Response", value = "Count") %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+summer_data <- resort_df %>%
+  summarise(Yes = sum(`Summer skiing` == "Yes", na.rm = TRUE),
+            No = sum(`Summer skiing` == "No", na.rm = TRUE)) %>%
+  gather(key = "Response", value = "Count") %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+nightskiing_data <- resort_df %>%
+  summarise(Yes = sum(Nightskiing == "Yes", na.rm = TRUE),
+            No = sum(Nightskiing == "No", na.rm = TRUE)) %>%
+  gather(key = "Response", value = "Count") %>%
+  mutate(Percentage = Count / sum(Count) * 100)
 
 # Helper function to create pie charts
 create_pie_chart <- function(data, title) {
-  df <- as.data.frame(data)
-  colnames(df) <- c("Response", "Percentage")
-  ggplot(df, aes(x = "", y = Percentage, fill = Response)) +
+  ggplot(data, aes(x = "", y = Percentage, fill = Response)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar(theta = "y") +
     theme_void() +
@@ -262,3 +287,65 @@ head(resort_df)
 
 ```
 
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Define the mapping from month names to numeric values
+month_to_number <- c(
+  "January" = 1,
+  "February" = 2,
+  "March" = 3,
+  "April" = 4,
+  "May" = 5,
+  "June" = 6,
+  "July" = 7,
+  "August" = 8,
+  "September" = 9,
+  "October" = 10,
+  "November" = 11,
+  "December" = 12
+)
+
+# Function to convert a single season range (e.g., "December - April") into numeric months
+convert_range_to_months <- function(range) {
+  months <- strsplit(range, " - ")[[1]]
+  start_month <- months[1]
+  end_month <- months[2]
+  
+  start_num <- month_to_number[[start_month]]
+  end_num <- month_to_number[[end_month]]
+  
+  if (start_num <= end_num) {
+    return(start_num:end_num)
+  } else {
+    return(c(start_num:12, 1:end_num))
+  }
+}
+
+# Function to handle multiple ranges in a season string
+convert_season_to_months_multiple <- function(season) {
+  # Split the season string by commas
+  ranges <- strsplit(season, ", ")[[1]]
+  
+  # Convert each range to numeric months and combine the results
+  all_months <- unlist(lapply(ranges, convert_range_to_months))
+  
+  # Remove duplicates and return sorted months
+  return(sort(unique(all_months)))
+}
+
+# Apply the function to the "Season" column
+resort_df$Season_Months <- lapply(resort_df$Season, convert_season_to_months_multiple)
+
+# Print the dataset with the new column
+print(resort_df)
+
+```
