@@ -76,6 +76,8 @@ ggplot(cleaned_resort_df, aes(x = Continent, y = Price, fill = Continent)) +
   scale_fill_brewer(palette = "Set2")
 
 ```
+The boxplot shows the distribution of ticker prices across continents, showing North America with the highest median prices but a broader range. However, the higher median price reflects the premium ski destinations. Conversely, South America and Asia have significantly lower prices, promoting these regions as an economical alternative. European resorts show a moderate median price with wide variability, emphasizing the importance of choosing carefully within the area. Ultimately, the results underscore the importance of focusing on continents with lower median prices when selecting resorts. 
+
 2. Scatterplot: Ticket Prices vs. Highest Point
 ```{r}
 ggplot(cleaned_resort_df, aes(x = `Highest point`, y = Price)) +
@@ -92,6 +94,8 @@ ggplot(cleaned_resort_df, aes(x = `Highest point`, y = Price)) +
   theme_minimal(base_size = 12) +
   theme(legend.title = element_text(size = 10))
 ```
+The scatterplot visualizes a positive relationship between the highest point and ticket prices, with a trendline to confirm the pattern. The correlation implies that higher-altitude resorts, which probably have better snow conditions and more advanced terrain, charge higher prices. The difference is also available by continent, with North American and European resorts being more expensive. Therefore, cost-saving strategies would encourage one to ski outside of these regions and avoid the high-elevation resorts. 
+
 3. Bar Chart: Average Ticket Prices by Season
 ```{r}
 # Group seasons into broader categories
@@ -117,6 +121,9 @@ ggplot(cleaned_resort_df, aes(x = reorder(Season_Group, Price, FUN = mean), y = 
   theme_minimal(base_size = 12) +
   scale_fill_brewer(palette = "Set3") # Adapted color palette
 ```
+The bar chart shows the variation in the average ticket price across different season groups. The year-round resorts have the highest average prices, emphasizing a premium for offering year-round access. Meanwhile, the summer-focussed resorts are slightly cheaper than the winter ones, probably caused by less demand between skiing seasons. The “Other” category encompasses the mixed-season resorts with the lowest average price, making them the best economical choice. The graphic helps travelers focus on specific season types to balance the cost against their skiing preferences. 
+
+
 4. Heatmap: Ticket Prices by Country
 ```{r, fig.width=10, fig.height=15}
 # Separate graphics for each continent, grouped by country
@@ -139,8 +146,10 @@ ggplot(cleaned_resort_df, aes(x = reorder(Country, Price, FUN = median), y = Pri
   facet_wrap(~Continent, scales = "free_y", ncol = 1) # Facet by continent, free Y-axis scaling for clarity
 
 ```
-Regression Table
+This boxplot helps us further break down ticket prices by country to provide granular insight into the data. Higher-priced countries such as Australia, the United States, and Canada dominate the top of the list, aligning with their reputation for premium resorts. Conversely, China, Turkey, and Georgia have the lowest ticket prices, making them attractive to budget-conscious travelers. However, it is essential to consider the cost of travel rather than just the resort when making economical skiing decisions. The variability can be substantial within regions, as seen within Europe. Ultimately, it is essential to be selective of a region itself, and selectivity within that region will yield the best, most cost-effective result. 
 
+
+Regression Table
 ```{r}
 model <- lm(Price ~ `Highest point` + `Lift capacity` + `Child friendly` + Snowparks + Nightskiing, 
             data = cleaned_resort_df)
@@ -165,4 +174,4 @@ kable(
 
 
 ```
-
+The regression results show that among all the predictors looked at, the Highest Point and the presence of Snowparks are the most significant drivers of ticket prices, with a solid positive coefficient. This highlights that resorts at higher altitudes tend to have higher prices, reflecting a premium associated with the elevation and potentially more challenging terrain. Resorts offering snowparks, which can attract freestyle or advanced skiers, can also afford the luxury of charging higher prices because of these amenities. Other variables like Lift Capacity, Child-Friendly Features, and Nightskiing do not significantly affect ticket prices. From here, the conclusion can be drawn that amenities geared toward families or casual skiing may not strongly affect price, and if, as a beginner skier, you want to avoid high prices, avoid resorts with high elevations and snowparks. 
