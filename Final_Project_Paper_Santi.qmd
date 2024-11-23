@@ -1,0 +1,168 @@
+---
+title: "Ski Resort Data Analysis - Santiago"
+author: "Santiago Gomez Alarcon"
+format: pdf
+editor: source
+date: today
+---
+
+```{r, message=FALSE}
+#| label: Installing-packages
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(geosphere)  
+library(ggrepel)
+library(broom)
+```
+
+# Reading and Cleaning Data
+```{r}
+#| label: reading-data
+resort_df <- read_csv("/Users/santi/ds1_2930/HD2930_Final_Project/resorts.csv")
+snow_df <- read_csv("/Users/santi/ds1_2930/HD2930_Final_Project/snow.csv")
+metadata <- read_csv("/Users/santi/ds1_2930/HD2930_Final_Project/data_dictionary.csv")
+
+head(snow_df)
+head(metadata)
+head(resort_df)
+```
+
+Dataset was found on https://www.mavenanalytics.io/data-playground?order=date_added%2Cdesc&search=ski%20resort. The csvs have been generated through webscraping from https://ski-resort-stats.com/ and the snow data come from https://nsidc.org/data/mod10cm/versions/61.
+
+```{r}
+# Define the cleaning function
+clean_resort_alphanumeric <- function(data_col) {
+  # Convert non-ASCII characters to ASCII
+  data_col <- iconv(data_col, from = "UTF-8", to = "ASCII", sub = "")
+  # Remove non-alphanumeric characters except hyphens
+  data_col <- gsub("[^a-zA-Z0-9 \\-]", "", data_col)
+  # Remove extra spaces
+  data_col <- gsub("\\s+", " ", data_col)
+  # Trim leading and trailing spaces
+  data_col <- trimws(data_col)
+  return(data_col)
+}
+
+# Clean the Resort column in the original dataframe
+resort_df$Resort <- clean_resort_alphanumeric(resort_df$Resort)
+
+# Create a new dataframe with the cleaned Resort column replacing the original
+cleaned_resort_df <- resort_df
+
+# Save the new dataframe with cleaned resort names to a CSV file
+write.csv(cleaned_resort_df, "cleaned_resort_df.csv", row.names = FALSE)
+
+# Display the new dataframe
+cleaned_resort_df
+
+```
+
+1. Boxplot: Ticket Prices by Continent
+```{r}
+# Boxplot of ticket prices by continent
+ggplot(cleaned_resort_df, aes(x = Continent, y = Price, fill = Continent)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "red", outlier.size = 2) +
+  labs(
+    title = "Distribution of Ticket Prices by Continent",
+    subtitle = "Analyzing how ticket prices vary globally",
+    x = "Continent",
+    y = "Ticket Price (USD)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Set2")
+
+```
+2. Scatterplot: Ticket Prices vs. Highest Point
+```{r}
+ggplot(cleaned_resort_df, aes(x = `Highest point`, y = Price)) +
+  geom_point(aes(color = Continent), alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    title = "Ticket Prices vs. Elevation (Highest Point)",
+    subtitle = "Is elevation a significant driver of ticket prices?",
+    x = "Highest Point (m)",
+    y = "Ticket Price (USD)",
+    caption = "Data source: Cleaned Resort Dataset"
+  ) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_minimal(base_size = 12) +
+  theme(legend.title = element_text(size = 10))
+```
+3. Bar Chart: Average Ticket Prices by Season
+```{r}
+# Group seasons into broader categories
+cleaned_resort_df <- cleaned_resort_df %>%
+  mutate(Season_Group = case_when(
+    grepl("December|November|March|April", Season) ~ "Winter",
+    grepl("June|July|August", Season) ~ "Summer",
+    grepl("Year-round", Season) ~ "Year-round",
+    TRUE ~ "Other"
+  ))
+
+
+# Horizontal bar chart using grouped seasons
+ggplot(cleaned_resort_df, aes(x = reorder(Season_Group, Price, FUN = mean), y = Price, fill = Season_Group)) +
+  stat_summary(fun = mean, geom = "bar", color = "black", show.legend = FALSE) +
+  coord_flip() + # Flip axes for horizontal bars
+  labs(
+    title = "Average Ticket Prices by Ski Season Group",
+    x = "Season Group",
+    y = "Average Ticket Price (USD)",
+    caption = "Data source: Cleaned Resort Dataset"
+  ) +
+  theme_minimal(base_size = 12) +
+  scale_fill_brewer(palette = "Set3") # Adapted color palette
+```
+4. Heatmap: Ticket Prices by Country
+```{r, fig.width=10, fig.height=15}
+# Separate graphics for each continent, grouped by country
+ggplot(cleaned_resort_df, aes(x = reorder(Country, Price, FUN = median), y = Price, fill = Continent)) +
+  geom_boxplot(outlier.shape = 21, outlier.color = "black", outlier.size = 1) +
+  coord_flip() +
+  labs(
+    title = "Ticket Prices by Country (Grouped by Continent)",
+    x = "Country",
+    y = "Ticket Price (USD)",
+    caption = "Data source: Cleaned Resort Dataset"
+  ) +
+  theme_minimal(base_size = 12) +
+  scale_fill_brewer(palette = "Set3", guide = "none") + # No legend needed since each continent is separate
+  theme(
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 10),
+    strip.text = element_text(size = 12, face = "bold")
+  ) +
+  facet_wrap(~Continent, scales = "free_y", ncol = 1) # Facet by continent, free Y-axis scaling for clarity
+
+```
+Regression Table
+
+```{r}
+model <- lm(Price ~ `Highest point` + `Lift capacity` + `Child friendly` + Snowparks + Nightskiing, 
+            data = cleaned_resort_df)
+
+tidy_model <- tidy(model, conf.int = TRUE)
+
+# Add a column for significance levels
+tidy_model <- tidy_model %>%
+  mutate(Significance = case_when(
+    p.value < 0.01 ~ "***",  # 1% significance level
+    p.value < 0.05 ~ "**",   # 5% significance level
+    p.value < 0.1 ~ "*",     # 10% significance level
+    TRUE ~ ""                # Not significant
+  ))
+
+kable(
+  tidy_model,
+  col.names = c("Term", "Estimate", "Std. Error", "t-value", "P-value", "Lower CI", "Upper CI", "Significance"),
+  digits = 3,
+  caption = "Regression Analysis of Ticket Prices: Key Predictors (Significance Levels)"
+)
+
+
+```
+
