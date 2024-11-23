@@ -57,7 +57,8 @@ cleaned_resort_df$OriginalResort <- resort_df$Resort
 # Write the cleaned data to a new CSV file
 write.csv(cleaned_resort_df, "cleaned_resort_names.csv", row.names = FALSE)
 
-cleaned_resort_df
+resort_df <- resort_df |>
+  mutate(clean_resort_name = clean_non_alphanumeric(Resort))
 ```
 
 ```{r}
@@ -101,9 +102,105 @@ It is clear that there are many more snow observation locations across the whole
 
 ```{r}
 # Rename ID column to Resort_ID
-#resort_df <- resort_df %>%
- # rename(Resort_ID = ID)
+resort_df <- resort_df |>
+  rename(Resort_ID = ID)
+```
 
+
+```{r}
+
+# Function to assign resort IDs based on latitude and longitude with a specified tolerance
+assign_resort_ids <- function(snow_data, resort_data, tolerance = 0.1) {
+  # Initialize Resort_ID as a character column with empty strings
+  snow_data <- snow_data %>%
+    mutate(Resort_ID = "")
+  
+  for (i in seq_len(nrow(resort_data))) {
+    # Get the latitude and longitude of the current resort
+    resort_lat <- resort_data$Latitude[i]
+    resort_lon <- resort_data$Longitude[i]
+    resort_id <- resort_data$Resort_ID[i]
+    
+    # Filter snow data within the specified tolerance
+    snow_data <- snow_data %>%
+      mutate(
+        Resort_ID = ifelse(
+          Latitude >= (resort_lat - tolerance) & Latitude <= (resort_lat + tolerance) &
+          Longitude >= (resort_lon - tolerance) & Longitude <= (resort_lon + tolerance),
+          ifelse(
+            Resort_ID == "",
+            as.character(resort_id),  # Assign the first ID
+            paste0(Resort_ID, ", ", resort_id)  # Append additional IDs
+          ),
+          Resort_ID
+        )
+      )
+  }
+  
+  # Replace empty strings with NA for unmatched rows
+  snow_data <- snow_data %>%
+    mutate(Resort_ID = ifelse(Resort_ID == "", NA, Resort_ID))
+  
+  return(snow_data)
+}
+
+# Specify file paths for saving/loading
+snow_df2_file <- "snow_df2.csv"
+avg_snow_file <- "avg_snow_by_resort_and_month.csv"
+
+# Check if `snow_df2` already exists
+if (!file.exists(snow_df2_file)) {
+  # Create `snow_df2` with Resort_ID assignment
+  snow_df2 <- snow_df %>%
+    mutate(Resort_ID = NA)
+  
+  # Assign Resort_IDs to snow_df
+  tolerance_value <- 0.5  # Set your desired tolerance
+  snow_df2 <- assign_resort_ids(snow_df2, resort_df, tolerance = tolerance_value)
+  
+  # Save `snow_df2` to a CSV file
+  write_csv(snow_df2, snow_df2_file)
+} else {
+  # Load `snow_df2` from CSV
+  snow_df2 <- read_csv(snow_df2_file)
+}
+
+# Create `avg_snow_by_resort_and_month` dataframe
+if (!file.exists(avg_snow_file)) {
+  avg_snow_by_resort_and_month <- snow_df2 %>%
+    filter(!is.na(Resort_ID)) %>%
+    group_by(Resort_ID, Month) %>%
+    summarise(
+      avg_snow = mean(Snow, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+     # Split Resort_ID into components and take the first ID for sorting
+     first_resort_id = as.numeric(str_extract(Resort_ID, "^\\d+"))
+    ) %>%
+    arrange(first_resort_id, Resort_ID) %>% # Sort by the first ID and Resort_ID alphabetically
+    select(-first_resort_id)  # Remove helper column after sorting
+  
+  # Save `avg_snow_by_resort_and_month` to a CSV file
+  write_csv(avg_snow_by_resort_and_month, avg_snow_file)
+} else {
+  avg_snow_by_resort_and_month <- read_csv(avg_snow_file)
+}
+
+# Ensure Resort_ID is numeric in avg_snow_by_resort_and_month
+all_resort_ids <- seq(1, 499)
+present_resort_ids <- unique(as.numeric(unlist(strsplit(avg_snow_by_resort_and_month$Resort_ID, ",\\s*"))))
+
+# Find missing Resort_IDs
+missing_resort_ids <- setdiff(all_resort_ids, present_resort_ids)
+
+# Print the missing IDs
+print(missing_resort_ids) # This is the resort that has no snow data
+
+```
+
+
+```{r}
 # Count unique latitude and longitude values
 unique_latitudes <- snow_df %>%
   summarise(unique_lat = n_distinct(Latitude)) %>%
