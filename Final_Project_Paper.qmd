@@ -56,13 +56,129 @@ cleaned_resort_df$OriginalResort <- resort_df$Resort
 
 # Write the cleaned data to a new CSV file
 write.csv(cleaned_resort_df, "cleaned_resort_names.csv", row.names = FALSE)
+```
+
+```{r}
+#| label: cleaning-column-names
+# Rename ID column to Resort_ID
+resort_df <- resort_df |>
+  rename(Resort_ID = ID)
 
 resort_df <- resort_df |>
   mutate(clean_resort_name = clean_non_alphanumeric(Resort))
 ```
 
+
 ```{r}
-#| label: merging-datasets
+#| label: fixing-missing-incorrect-values
+
+#Removing NAs and weird values
+resort_df <- resort_df |> filter(Price > 0)
+
+# Some ski resorts have "Unknown" for their ski season. For these we set a sensible value if they are in the northern or southern hemisphere
+
+resort_df <- resort_df %>%
+  mutate(Hemisphere = ifelse(Latitude > 0, "Northern", "Southern"))
+
+# Function to process Season column
+process_season <- function(season) {
+  if (is.na(season)) return(NULL)
+  
+  # Handle "Year-round"
+  if (tolower(season) == "year-round") {
+    return(data.frame(Start = 1, End = 12))
+  } else if (tolower(season=="unknown")) {
+    return(data.frame(Start = NA, End = NA))
+  }
+  
+  # Split multiple intervals
+  intervals <- strsplit(season, ",\\s*")[[1]]
+  
+  # Parse each interval
+  parsed_intervals <- lapply(intervals, function(interval) {
+    months <- str_extract_all(interval, "[A-Za-z]+")[[1]]
+    if (length(months) == 1) {
+      # Single-month season
+      start <- match(months, month.name)
+      return(data.frame(Start = start, End = start))
+    } else if (length(months) == 2) {
+      # Range of months
+      start <- match(months[1], month.name)
+      end <- match(months[2], month.name)
+      return(data.frame(Start = start, End = end))
+    }
+    return(NULL)
+  })
+  
+  # Combine parsed intervals
+  bind_rows(parsed_intervals)
+}
+
+# Process all seasons and expand intervals
+season_data <- resort_df %>%
+  mutate(
+    Season_Data = map(Season, process_season)
+  ) %>%
+  unnest(Season_Data)
+
+# Calculate average season start and end by hemisphere
+average_season_hemisphere <- season_data %>%
+  group_by(Hemisphere) %>%
+  summarise(
+    Avg_Season_Start = mean(Start, na.rm = TRUE),
+    Avg_Season_End = mean(End, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Avg_Season = paste(month.name[round(Avg_Season_Start)], "-", month.name[round(Avg_Season_End)])
+  )
+
+
+# Calculate average season start and end by continent
+average_season_continent <- season_data %>%
+  group_by(Continent) %>%
+  summarise(
+    Avg_Season_Start = mean(Start, na.rm = TRUE),
+    Avg_Season_End = mean(End, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Avg_Season = paste(month.name[round(Avg_Season_Start)], "-", month.name[round(Avg_Season_End)])
+  )
+
+# Print results
+print("Average season by hemisphere:")
+print(average_season_hemisphere)
+
+print("Average season by continent:")
+print(average_season_continent)
+
+# Extract the average season for each hemisphere
+northern_avg_season <- average_season_hemisphere %>%
+  filter(Hemisphere == "Northern") %>%
+  pull(Avg_Season)
+
+southern_avg_season <- average_season_hemisphere %>%
+  filter(Hemisphere == "Southern") %>%
+  pull(Avg_Season)
+
+# Assign default seasons to "Unknown" based on hemisphere averages
+resort_df <- resort_df %>%
+  mutate(
+    Season = case_when(
+      Season == "Unknown" & Hemisphere == "Northern" ~ northern_avg_season,
+      Season == "Unknown" & Hemisphere == "Southern" ~ southern_avg_season,
+      Season == "Year-round" ~ "January - December",
+      TRUE ~ Season  # Keep other seasons as is
+    )
+  )
+#Now resort_df should have no missing or incorrect values, and seasons are now consistent
+
+```
+
+
+```{r}
+#| label: plotting-resort-and-snow-on-map
 #plot the latitude and longitude of resorts as well as the latitude and longitude in the snow dataset with a different color
 # Extract unique latitude and longitude from the snow dataset
 unique_snow_df <- snow_df %>%
@@ -100,15 +216,9 @@ ggplot() +
 ```
 It is clear that there are many more snow weather observation stations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for gps locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
 
-```{r}
-# Rename ID column to Resort_ID
-resort_df <- resort_df |>
-  rename(Resort_ID = ID)
-```
-
 
 ```{r}
-
+#| label: merging-IDs
 # Function to assign resort IDs based on latitude and longitude with a specified tolerance
 assign_resort_ids <- function(snow_data, resort_data, tolerance = 0.1) {
   # Initialize Resort_ID as a character column with empty strings
@@ -204,7 +314,7 @@ if (!file.exists(avg_snow_file)) {
 }
 
 # Ensure Resort_ID is numeric in avg_snow_by_resort_and_month
-all_resort_ids <- seq(1, 499)
+all_resort_ids <- unique(resort_df$Resort_ID)
 
 # Find missing Resort_IDs
 missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_month$Resort_ID))
@@ -213,7 +323,9 @@ missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_mont
 print(missing_resort_ids) # This is the resort that has no snow data
 
 ```
-Using a radius of 0.5 degrees in latitude and longitude (equivalent to ~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts.
+Using a radius of 0.5 degrees in latitude and longitude (equivalent to ~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts. For each resort we take all weather stations within our tolerance (±0.5 deg latitude and longitude) and average their readings for each month.
+
+Some resorts don't have snow coverage readings for all months. This is presumably due to outages for weather cells located in those areas.
 
 
 
