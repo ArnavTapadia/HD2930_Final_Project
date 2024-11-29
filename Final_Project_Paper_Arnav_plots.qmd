@@ -14,6 +14,7 @@ library(tidymodels)
 library(ggplot2)
 library(dplyr)
 library(knitr)
+library(reshape2)
 
 ```
 
@@ -334,36 +335,137 @@ It is clear that there are many more snow weather observation stations across th
 
 
 ### Average Ski Season Start and End by Continent
-```{r}
-# Plot of average ski season start and end for each continent
-ggplot(average_season_continent, aes(x = Continent)) +
-  geom_segment(
-    aes(
-      xend = Continent,
-      y = Avg_Season_Start,
-      yend = Avg_Season_End,
-      color = Continent
-    ),
-    size = 3, lineend = "round"
+```{r, fig.height=5, fig.width=4}
+# Create the boxplots for start and end
+ggplot(season_data, aes(x = Continent, y = Start, fill = Hemisphere)) +
+  geom_jitter(aes(color = Hemisphere), width = 0.3, alpha = 0.5, size = 0.5) +
+  geom_boxplot(alpha = 0.4, outlier.shape = NA, coef=2) +
+  labs(
+    title = "Ski Season Start by Continent",
+    x = "Continent",
+    y = "Season Start (Month)",
+    fill = "Hemisphere",
+    color = "Hemisphere",
+    caption = "Boxplots show the distribution of ski season start months across continents."
   ) +
   scale_y_continuous(
     breaks = 1:12,
     labels = month.name,
-    limits = c(1, 12),
-    name = "Month"
+    limits = c(0, 13)
   ) +
-  scale_color_brewer(palette = "Set2", name = "Continent") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  coord_cartesian(expand = FALSE) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.caption = element_text(size=4),
+    legend.position = "top"
+  )
+
+ggplot(season_data, aes(x = Continent, y = End, fill = Hemisphere)) +
+  geom_jitter(aes(color = Hemisphere), width = 0.3, alpha = 0.5, size = 0.5) +
+  geom_boxplot(alpha = 0.4, outlier.shape = NA, coef=4) +
   labs(
-    title = "Average Ski Season by Continent",
+    title = "Ski Season End by Continent",
     x = "Continent",
-    caption = "The bars represent the average ski season start and end for each continent."
+    y = "Season End (Month)",
+    fill = "Hemisphere",
+    color = "Hemisphere",
+    caption = "Boxplots show the distribution of ski season end months across continents."
   ) +
+  scale_y_continuous(
+    breaks = 1:12,
+    labels = month.name,
+    limits = c(0, 13)
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  coord_cartesian(expand = FALSE) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.caption = element_text(size=4),
+    legend.position = "top",
+  )
+
+```
+### Correlation Heatmap
+```{r}
+
+# Filter numeric columns excluding Latitude, Longitude, and Resort_ID
+numeric_columns <- resort_df %>%
+  select_if(is.numeric) %>%
+  select(-Latitude, -Longitude, -Resort_ID)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(numeric_columns, use = "pairwise.complete.obs")
+
+# Convert the matrix into a data frame for melting
+correlation_matrix[upper.tri(correlation_matrix)] <- NA  # Set the upper triangle to NA
+
+# Melt the correlation matrix for ggplot2
+melted_correlation <- melt(correlation_matrix, na.rm = TRUE)
+
+# Plot the heatmap for the lower triangular matrix
+ggplot(melted_correlation, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +  # Heatmap tiles
+  geom_text(aes(label = round(value, 2)), color = "black", size = 3) +  # Add correlation values
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white",
+    midpoint = 0, limit = c(-1, 1), space = "Lab",
+    name = "Correlation"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Lower Triangle Correlation Heatmap of Ski Resort Data",
+    x = "",
+    y = ""
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  )
+
+```
+
+### Snow coverage by month for each continent
+```{r}
+# Join avg_snow_by_resort_and_month with resort_df, selecting only Continent and ID columns
+avg_snow_with_continent <- avg_snow_by_resort_and_month %>%
+  left_join(resort_df %>% select(Resort_ID, Continent), 
+            by = c("Resort_ID" = "Resort_ID"))
+
+# Summarize average snow coverage per month for each continent
+avg_snow_by_continent <- avg_snow_with_continent %>%
+  group_by(Continent, Month) %>%
+  summarise(
+    avg_snow_coverage = mean(avg_snow, na.rm = TRUE),  # Calculate average snow coverage
+    .groups = "drop"
+  )
+
+# Convert Month to a proper date format for better plotting
+avg_snow_by_continent <- avg_snow_by_continent %>%
+  mutate(Month = as.Date(Month, format = "%Y-%m-%d"))
+
+# Plot the line plot showing average snow coverage per month by continent
+ggplot(avg_snow_by_continent, aes(x = Month, y = avg_snow_coverage, color = Continent, group = Continent)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Average Snow Coverage Per Month by Continent",
+    x = "Month",
+    y = "Average Snow Coverage (cm)",
+    color = "Continent"
+  ) +
+  scale_x_date(date_labels = "%b", date_breaks = "1 month") +  # Show month names
   theme_minimal() +
   theme(
     plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
+    legend.position = "top"
   )
-
 ```
 
