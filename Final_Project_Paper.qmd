@@ -165,21 +165,37 @@ if (!file.exists(snow_df2_file)) {
   snow_df2 <- read_csv(snow_df2_file)
 }
 
+#removing snow readings that aren't near a resort to reduce computation
+snow_df_with_ID_no_NA <- snow_df2 |> filter(!is.na(Resort_ID))
+
+# Ensure Resort_ID is a list of IDs split by commas
+snow_df_with_ID_no_NA <- snow_df_with_ID_no_NA %>%
+  mutate(
+    Resort_ID = strsplit(as.character(Resort_ID), ",\\s*")  # Split IDs into lists
+  )
+
+# Expand snow_df_with_ID_no_NA to have one row per Resort_ID
+expanded_snow_df <- snow_df_with_ID_no_NA %>%
+  unnest(Resort_ID) %>%
+  mutate(Resort_ID = as.numeric(Resort_ID))  # Convert Resort_ID to numeric for proper grouping
+
+# expanded snow df contains all snow coverage readings within 55km of each resort over all 12 months
+# we will average this so that we have an average snow coverage reading per month for each resort
+# note some resorts may not have an average reading for some months
+
+
 # Create `avg_snow_by_resort_and_month` dataframe
 if (!file.exists(avg_snow_file)) {
-  avg_snow_by_resort_and_month <- snow_df2 %>%
-    filter(!is.na(Resort_ID)) %>%
+  
+  # Group by Resort_ID and Month, and compute the average snow
+  avg_snow_by_resort_and_month <- expanded_snow_df %>%
     group_by(Resort_ID, Month) %>%
     summarise(
       avg_snow = mean(Snow, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    mutate(
-     # Split Resort_ID into components and take the first ID for sorting
-     first_resort_id = as.numeric(str_extract(Resort_ID, "^\\d+"))
-    ) %>%
-    arrange(first_resort_id, Resort_ID) %>% # Sort by the first ID and Resort_ID alphabetically
-    select(-first_resort_id)  # Remove helper column after sorting
+    arrange(Resort_ID, Month)
+
   
   # Save `avg_snow_by_resort_and_month` to a CSV file
   write_csv(avg_snow_by_resort_and_month, avg_snow_file)
@@ -189,18 +205,21 @@ if (!file.exists(avg_snow_file)) {
 
 # Ensure Resort_ID is numeric in avg_snow_by_resort_and_month
 all_resort_ids <- seq(1, 499)
-present_resort_ids <- unique(as.numeric(unlist(strsplit(avg_snow_by_resort_and_month$Resort_ID, ",\\s*"))))
 
 # Find missing Resort_IDs
-missing_resort_ids <- setdiff(all_resort_ids, present_resort_ids)
+missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_month$Resort_ID))
 
 # Print the missing IDs
 print(missing_resort_ids) # This is the resort that has no snow data
 
 ```
+Using a radius of 0.5 degrees in latitude and longitude (equivalent to ~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts.
 
 
+
+## Unused code - to remove - binning latitude and longitude to reduce snow_df
 ```{r}
+
 # Count unique latitude and longitude values
 unique_latitudes <- snow_df %>%
   summarise(unique_lat = n_distinct(Latitude)) %>%
