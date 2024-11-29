@@ -1,0 +1,360 @@
+---
+title: "Ski Resort Data Analysis - Final Paper"
+author: "Arnav, Sam, Quinn, and Santiago"
+date: today
+format: pdf
+editor: source
+---
+
+
+```{r, message=FALSE}
+#| label: Installing-packages
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+
+```
+
+# Reading and Cleaning Data
+```{r}
+#| label: reading-data
+resort_df <- read_csv("resorts.csv")
+snow_df <- read_csv("snow.csv")
+metadata <- read_csv("data_dictionary.csv")
+
+head(resort_df)
+head(snow_df)
+head(metadata)
+
+```
+
+
+Dataset was found on https://www.mavenanalytics.io/data-playground?order=date_added%2Cdesc&search=ski%20resort. The csvs have been generated through webscraping from https://ski-resort-stats.com/ and the snow data come from https://nsidc.org/data/mod10cm/versions/61.
+
+```{r}
+#| label: cleaning-data
+clean_non_alphanumeric <- function(data_col) {
+  # Convert non-ASCII characters to ASCII
+  data_col <- iconv(data_col, from = "UTF-8", to = "ASCII", sub = "")
+  # Remove non-alphanumeric characters except hyphens
+  data_col <- gsub("[^a-zA-Z0-9 \\-]", "", data_col)
+  # Remove extra spaces
+  data_col <- gsub("\\s+", " ", data_col)
+  # Trim leading and trailing spaces
+  trimws(data_col)
+}
+
+# Create a new dataframe with only the cleaned Resort column
+cleaned_resort_df <- data.frame(CleanedResort = clean_non_alphanumeric(resort_df$Resort))
+
+# Add the original Resort names for comparison
+cleaned_resort_df$OriginalResort <- resort_df$Resort
+
+# Write the cleaned data to a new CSV file
+write.csv(cleaned_resort_df, "cleaned_resort_names.csv", row.names = FALSE)
+```
+
+```{r}
+#| label: cleaning-column-names
+# Rename ID column to Resort_ID
+resort_df <- resort_df |>
+  rename(Resort_ID = ID)
+
+resort_df <- resort_df |>
+  mutate(clean_resort_name = clean_non_alphanumeric(Resort))
+```
+
+
+```{r}
+#| label: fixing-missing-incorrect-values
+
+#Removing NAs and weird values
+resort_df <- resort_df |> filter(Price > 0)
+
+# Some ski resorts have "Unknown" for their ski season. For these we set a sensible value if they are in the northern or southern hemisphere
+
+resort_df <- resort_df %>%
+  mutate(Hemisphere = ifelse(Latitude > 0, "Northern", "Southern"))
+
+# Function to process Season column
+process_season <- function(season) {
+  if (is.na(season)) return(NULL)
+  
+  # Handle "Year-round"
+  if (tolower(season) == "year-round") {
+    return(data.frame(Start = 1, End = 12))
+  } else if (tolower(season=="unknown")) {
+    return(data.frame(Start = NA, End = NA))
+  }
+  
+  # Split multiple intervals
+  intervals <- strsplit(season, ",\\s*")[[1]]
+  
+  # Parse each interval
+  parsed_intervals <- lapply(intervals, function(interval) {
+    months <- str_extract_all(interval, "[A-Za-z]+")[[1]]
+    if (length(months) == 1) {
+      # Single-month season
+      start <- match(months, month.name)
+      return(data.frame(Start = start, End = start))
+    } else if (length(months) == 2) {
+      # Range of months
+      start <- match(months[1], month.name)
+      end <- match(months[2], month.name)
+      return(data.frame(Start = start, End = end))
+    }
+    return(NULL)
+  })
+  
+  # Combine parsed intervals
+  bind_rows(parsed_intervals)
+}
+
+# Process all seasons and expand intervals
+season_data <- resort_df %>%
+  mutate(
+    Season_Data = map(Season, process_season)
+  ) %>%
+  unnest(Season_Data)
+
+# Calculate average season start and end by hemisphere
+average_season_hemisphere <- season_data %>%
+  group_by(Hemisphere) %>%
+  summarise(
+    Avg_Season_Start = mean(Start, na.rm = TRUE),
+    Avg_Season_End = mean(End, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Avg_Season = paste(month.name[round(Avg_Season_Start)], "-", month.name[round(Avg_Season_End)])
+  )
+
+
+# Calculate average season start and end by continent
+average_season_continent <- season_data %>%
+  group_by(Continent) %>%
+  summarise(
+    Avg_Season_Start = mean(Start, na.rm = TRUE),
+    Avg_Season_End = mean(End, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Avg_Season = paste(month.name[round(Avg_Season_Start)], "-", month.name[round(Avg_Season_End)])
+  )
+
+# Print results
+print("Average season by hemisphere:")
+print(average_season_hemisphere)
+
+print("Average season by continent:")
+print(average_season_continent)
+
+# Extract the average season for each hemisphere
+northern_avg_season <- average_season_hemisphere %>%
+  filter(Hemisphere == "Northern") %>%
+  pull(Avg_Season)
+
+southern_avg_season <- average_season_hemisphere %>%
+  filter(Hemisphere == "Southern") %>%
+  pull(Avg_Season)
+
+# Assign default seasons to "Unknown" based on hemisphere averages
+resort_df <- resort_df %>%
+  mutate(
+    Season = case_when(
+      Season == "Unknown" & Hemisphere == "Northern" ~ northern_avg_season,
+      Season == "Unknown" & Hemisphere == "Southern" ~ southern_avg_season,
+      Season == "Year-round" ~ "January - December",
+      TRUE ~ Season  # Keep other seasons as is
+    )
+  )
+#Now resort_df should have no missing or incorrect values, and seasons are now consistent
+
+```
+
+
+```{r}
+#| label: plotting-resort-and-snow-on-map
+#plot the latitude and longitude of resorts as well as the latitude and longitude in the snow dataset with a different color
+# Extract unique latitude and longitude from the snow dataset
+unique_snow_df <- snow_df %>%
+  distinct(Latitude, Longitude)
+
+# Plot the latitude and longitude of resorts and snow observation locations over a world map
+ggplot() +
+  # Add the world map as a base layer
+  borders("world", colour = "gray95", fill = "gray95") +
+  coord_fixed(1.3) + # Set aspect ratio for better map projection
+  # Plot snow observation locations
+  geom_point(data = unique_snow_df, aes(x = Longitude, y = Latitude, color = "Snow Observation Locations"), 
+             alpha = 0.7, size = 2, shape = 16) +
+  # Plot resort locations
+  geom_point(data = resort_df, aes(x = Longitude, y = Latitude, color = "Resort Locations"), 
+             alpha = 0.7, size = 3, shape = 17) +
+  # Customize colors for points
+  scale_color_manual(
+    values = c("Resort Locations" = "blue", "Snow Observation Locations" = "lightblue"),
+    name = "Dataset"
+  ) +
+  # Add labels and styling
+  labs(
+    title = "Global Map of Resorts and Snow Observation Locations",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+It is clear that there are many more snow weather observation stations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for gps locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
+
+
+```{r}
+#| label: merging-IDs
+# Function to assign resort IDs based on latitude and longitude with a specified tolerance
+assign_resort_ids <- function(snow_data, resort_data, tolerance = 0.1) {
+  # Initialize Resort_ID as a character column with empty strings
+  snow_data <- snow_data %>%
+    mutate(Resort_ID = "")
+  
+  for (i in seq_len(nrow(resort_data))) {
+    # Get the latitude and longitude of the current resort
+    resort_lat <- resort_data$Latitude[i]
+    resort_lon <- resort_data$Longitude[i]
+    resort_id <- resort_data$Resort_ID[i]
+    
+    # Filter snow data within the specified tolerance
+    snow_data <- snow_data %>%
+      mutate(
+        Resort_ID = ifelse(
+          Latitude >= (resort_lat - tolerance) & Latitude <= (resort_lat + tolerance) &
+          Longitude >= (resort_lon - tolerance) & Longitude <= (resort_lon + tolerance),
+          ifelse(
+            Resort_ID == "",
+            as.character(resort_id),  # Assign the first ID
+            paste0(Resort_ID, ", ", resort_id)  # Append additional IDs
+          ),
+          Resort_ID
+        )
+      )
+  }
+  
+  # Replace empty strings with NA for unmatched rows
+  snow_data <- snow_data %>%
+    mutate(Resort_ID = ifelse(Resort_ID == "", NA, Resort_ID))
+  
+  return(snow_data)
+}
+
+# Specify file paths for saving/loading
+snow_df2_file <- "snow_df2.csv"
+avg_snow_file <- "avg_snow_by_resort_and_month.csv"
+
+# Check if `snow_df2` already exists
+if (!file.exists(snow_df2_file)) {
+  # Create `snow_df2` with Resort_ID assignment
+  snow_df2 <- snow_df %>%
+    mutate(Resort_ID = NA)
+  
+  # Assign Resort_IDs to snow_df
+  tolerance_value <- 0.5  # Set your desired tolerance
+  snow_df2 <- assign_resort_ids(snow_df2, resort_df, tolerance = tolerance_value)
+  
+  # Save `snow_df2` to a CSV file
+  write_csv(snow_df2, snow_df2_file)
+} else {
+  # Load `snow_df2` from CSV
+  snow_df2 <- read_csv(snow_df2_file)
+}
+
+#removing snow readings that aren't near a resort to reduce computation
+snow_df_with_ID_no_NA <- snow_df2 |> filter(!is.na(Resort_ID))
+
+# Ensure Resort_ID is a list of IDs split by commas
+snow_df_with_ID_no_NA <- snow_df_with_ID_no_NA %>%
+  mutate(
+    Resort_ID = strsplit(as.character(Resort_ID), ",\\s*")  # Split IDs into lists
+  )
+
+# Expand snow_df_with_ID_no_NA to have one row per Resort_ID
+expanded_snow_df <- snow_df_with_ID_no_NA %>%
+  unnest(Resort_ID) %>%
+  mutate(Resort_ID = as.numeric(Resort_ID))  # Convert Resort_ID to numeric for proper grouping
+
+# expanded snow df contains all snow coverage readings within 55km of each resort over all 12 months
+# we will average this so that we have an average snow coverage reading per month for each resort
+# note some resorts may not have an average reading for some months
+
+
+# Create `avg_snow_by_resort_and_month` dataframe
+if (!file.exists(avg_snow_file)) {
+  
+  # Group by Resort_ID and Month, and compute the average snow
+  avg_snow_by_resort_and_month <- expanded_snow_df %>%
+    group_by(Resort_ID, Month) %>%
+    summarise(
+      avg_snow = mean(Snow, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    arrange(Resort_ID, Month)
+
+  
+  # Save `avg_snow_by_resort_and_month` to a CSV file
+  write_csv(avg_snow_by_resort_and_month, avg_snow_file)
+} else {
+  avg_snow_by_resort_and_month <- read_csv(avg_snow_file)
+}
+
+# Ensure Resort_ID is numeric in avg_snow_by_resort_and_month
+all_resort_ids <- unique(resort_df$Resort_ID)
+
+# Find missing Resort_IDs
+missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_month$Resort_ID))
+
+# Print the missing IDs
+print(missing_resort_ids) # This is the resort that has no snow data
+
+```
+Using a radius of 0.5 degrees in latitude and longitude (equivalent to ~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts. For each resort we take all weather stations within our tolerance (±0.5 deg latitude and longitude) and average their readings for each month.
+
+Some resorts don't have snow coverage readings for all months. This is presumably due to outages for weather cells located in those areas.
+
+
+
+## Unused code - to remove - binning latitude and longitude to reduce snow_df
+```{r}
+
+# Count unique latitude and longitude values
+unique_latitudes <- snow_df %>%
+  summarise(unique_lat = n_distinct(Latitude)) %>%
+  pull(unique_lat)
+
+unique_longitudes <- snow_df %>%
+  summarise(unique_lon = n_distinct(Longitude)) %>%
+  pull(unique_lon)
+
+cat("Number of unique latitudes:", unique_latitudes, "\n")
+cat("Number of unique longitudes:", unique_longitudes, "\n")
+
+# Bin the latitude and longitude, group by Month, and calculate average Snow
+binned_snow_df <- snow_df %>%
+  mutate(
+    lat_bin = floor(Latitude/5)*5,          # Bin latitude to nearest lower degree
+    lon_bin = floor(Longitude / 8) * 8 # Bin longitude to nearest lower 5 degrees
+  ) %>%
+  group_by(Month, lat_bin, lon_bin) %>%
+  summarise(
+    avg_snow = mean(Snow, na.rm = TRUE), # Average Snow for the bin
+    .groups = "drop"                     # Ungroup after summarise
+  )
+
+# View the resulting data frame
+print(binned_snow_df)
+
+```
