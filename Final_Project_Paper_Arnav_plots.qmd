@@ -327,34 +327,39 @@ Some resorts don't have snow coverage readings for all months. This is presumabl
 
 
 
-## Unused code - to remove - binning latitude and longitude to reduce snow_df
+## Data Analysis Plots
+
+### Average Ski Season Start and End by Continent
 ```{r}
-
-# Count unique latitude and longitude values
-unique_latitudes <- snow_df %>%
-  summarise(unique_lat = n_distinct(Latitude)) %>%
-  pull(unique_lat)
-
-unique_longitudes <- snow_df %>%
-  summarise(unique_lon = n_distinct(Longitude)) %>%
-  pull(unique_lon)
-
-cat("Number of unique latitudes:", unique_latitudes, "\n")
-cat("Number of unique longitudes:", unique_longitudes, "\n")
-
-# Bin the latitude and longitude, group by Month, and calculate average Snow
-binned_snow_df <- snow_df %>%
-  mutate(
-    lat_bin = floor(Latitude/5)*5,          # Bin latitude to nearest lower degree
-    lon_bin = floor(Longitude / 8) * 8 # Bin longitude to nearest lower 5 degrees
-  ) %>%
-  group_by(Month, lat_bin, lon_bin) %>%
-  summarise(
-    avg_snow = mean(Snow, na.rm = TRUE), # Average Snow for the bin
-    .groups = "drop"                     # Ungroup after summarise
+# Plot of average ski season start and end for each continent
+ggplot(average_season_continent, aes(x = Continent)) +
+  geom_segment(
+    aes(
+      xend = Continent,
+      y = Avg_Season_Start,
+      yend = Avg_Season_End,
+      color = Continent
+    ),
+    size = 3, lineend = "round"
+  ) +
+  scale_y_continuous(
+    breaks = 1:12,
+    labels = month.name,
+    limits = c(1, 12),
+    name = "Month"
+  ) +
+  scale_color_brewer(palette = "Set2", name = "Continent") +
+  labs(
+    title = "Average Ski Season by Continent",
+    x = "Continent",
+    caption = "The bars represent the average ski season start and end for each continent."
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
   )
 
-# View the resulting data frame
-print(binned_snow_df)
-
 ```
+
