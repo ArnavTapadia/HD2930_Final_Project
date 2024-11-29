@@ -98,7 +98,7 @@ ggplot() +
   )
 
 ```
-It is clear that there are many more snow observation locations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
+It is clear that there are many more snow weather observation stations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for gps locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
 
 ```{r}
 # Rename ID column to Resort_ID
