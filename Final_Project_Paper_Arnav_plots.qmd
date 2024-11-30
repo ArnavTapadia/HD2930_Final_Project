@@ -611,8 +611,8 @@ long_predictions <- resort_df_with_predictions %>%
 
 # Scatter plot: Actual vs Predicted
 ggplot(long_predictions, aes(x = Price, y = Predicted_Price, color = Model)) +
-  geom_point(alpha = 0.6) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  geom_point(alpha = 0.8,size=1) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "black") +
   labs(
     title = "Actual vs Predicted Prices by Model",
     x = "Actual Price",
