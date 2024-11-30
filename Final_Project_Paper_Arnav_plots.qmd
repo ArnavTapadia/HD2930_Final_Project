@@ -15,7 +15,7 @@ library(ggplot2)
 library(dplyr)
 library(knitr)
 library(reshape2)
-
+set.seed(123)
 ```
 
 # Reading and Cleaning Data
@@ -403,9 +403,6 @@ numeric_columns <- resort_df %>%
 # Calculate the correlation matrix
 correlation_matrix <- cor(numeric_columns, use = "pairwise.complete.obs")
 
-# Convert the matrix into a data frame for melting
-correlation_matrix[upper.tri(correlation_matrix)] <- NA  # Set the upper triangle to NA
-
 # Melt the correlation matrix for ggplot2
 melted_correlation <- melt(correlation_matrix, na.rm = TRUE)
 
@@ -420,7 +417,7 @@ ggplot(melted_correlation, aes(x = Var1, y = Var2, fill = value)) +
   ) +
   theme_minimal() +
   labs(
-    title = "Lower Triangle Correlation Heatmap of Ski Resort Data",
+    title = "Correlation Heatmap of Ski Resort Data",
     x = "",
     y = ""
   ) +
@@ -468,4 +465,196 @@ ggplot(avg_snow_by_continent, aes(x = Month, y = avg_snow_coverage, color = Cont
     legend.position = "top"
   )
 ```
+
+### Linear Regression
+
+```{r}
+
+# One-hot encode the Continent column
+continent_one_hot <- model.matrix(~ Continent + 0, data = resort_df) %>%
+  as.data.frame()
+
+# Rename columns for clarity
+colnames(continent_one_hot) <- gsub("Continent", "", colnames(continent_one_hot))
+
+# Add the one-hot encoded columns back to the dataframe
+resort_df_with_encoded_continents <- bind_cols(resort_df, continent_one_hot)
+
+# Split the data into training and testing sets (80% training, 20% testing)
+data_split <- initial_split(resort_df_with_encoded_continents, prop = 0.8)
+training_data <- training(data_split)
+testing_data <- testing(data_split)
+
+# Define a linear regression model specification
+lm_spec <- linear_reg() %>%
+  set_engine("lm")
+
+# Fit the model using the training data
+lm_fit <- lm_spec %>%
+  fit(
+    Price ~ `Highest point` + `Difficult slopes` + `Lowest point` + `Beginner slopes` + `Intermediate slopes` +
+      `Total lifts` + `Longest run` + `Snow cannons` + 
+      `Europe` + `Asia` + `North America` + `Oceania`,
+    data = training_data
+  )
+
+# Summarize the model
+summary(lm_fit$fit)
+
+# Predict on the training and testing sets
+training_data <- training_data %>%
+  mutate(
+    Predicted_Price_LM = predict(lm_fit, new_data = training_data)$.pred
+  )
+testing_data <- testing_data %>%
+  mutate(
+    Predicted_Price_LM = predict(lm_fit, new_data = testing_data)$.pred
+  )
+
+# Calculate average price by continent using the training data
+continent_avg_price <- training_data %>%
+  group_by(Continent) %>%
+  summarise(Avg_Price = mean(Price, na.rm = TRUE), .groups = "drop")
+
+# Add continent average price predictions to both datasets
+training_data <- training_data %>%
+  left_join(continent_avg_price, by = "Continent") %>%
+  mutate(
+    Predicted_Price_Continent = Avg_Price
+  )
+testing_data <- testing_data %>%
+  left_join(continent_avg_price, by = "Continent") %>%
+  mutate(
+    Predicted_Price_Continent = Avg_Price
+  )
+
+# Calculate RMSE for both models on testing data
+rmse_lm <- rmse(testing_data, truth = Price, estimate = Predicted_Price_LM)
+rmse_continent <- rmse(testing_data, truth = Price, estimate = Predicted_Price_Continent)
+
+# Print the RMSE values
+cat("RMSE for Linear Regression Model (Testing Data):", rmse_lm$.estimate, "\n")
+cat("RMSE for Continent Average Model (Testing Data):", rmse_continent$.estimate, "\n")
+
+```
+
+
+
+
+```{r}
+# Combine training and testing data for overall residual analysis
+resort_df_with_predictions <- bind_rows(
+  training_data %>% mutate(Data_Set = "Training"),
+  testing_data %>% mutate(Data_Set = "Testing")
+)
+
+# Add residuals for both models
+resort_df_with_predictions <- resort_df_with_predictions %>%
+  mutate(
+    Residual_LM = Price - Predicted_Price_LM,
+    Residual_Continent = Price - Predicted_Price_Continent
+  )
+
+# Residual plot for Linear Regression Model
+ggplot(resort_df_with_predictions, aes(x = Predicted_Price_LM, y = Residual_LM, color = Data_Set)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residual Plot for Linear Regression Model (All Data)",
+    x = "Predicted Price (Linear Regression)",
+    y = "Residuals",
+    color = "Data Set"
+  ) +
+  theme_minimal()
+
+# Residual plot for Continent Average Model
+ggplot(resort_df_with_predictions, aes(x = Predicted_Price_Continent, y = Residual_Continent, color = Data_Set)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residual Plot for Continent Average Model (All Data)",
+    x = "Predicted Price (Continent Average)",
+    y = "Residuals",
+    color = "Data Set"
+  ) +
+  theme_minimal()
+
+# Calculate RMSE for both models
+rmse_lm_all <- sqrt(mean(resort_df_with_predictions$Residual_LM^2, na.rm = TRUE))
+rmse_continent_all <- sqrt(mean(resort_df_with_predictions$Residual_Continent^2, na.rm = TRUE))
+
+# Display a comparison table
+comparison_df <- data.frame(
+  Model = c("Linear Regression", "Continent Average"),
+  RMSE = c(rmse_lm_all, rmse_continent_all)
+)
+
+# Print the table with knitr
+kable(
+  comparison_df,
+  caption = "Comparison of RMSE Between Linear Regression and Continent Average Models (All Data)"
+)
+```
+
+```{r}
+# Combine actual and predicted values for both models into long format
+long_predictions <- resort_df_with_predictions %>%
+  select(Price, Predicted_Price_LM, Predicted_Price_Continent) %>%
+  pivot_longer(
+    cols = c(Predicted_Price_LM, Predicted_Price_Continent),
+    names_to = "Model",
+    values_to = "Predicted_Price"
+  ) %>%
+  mutate(Model = recode(Model, 
+                        Predicted_Price_LM = "Linear Regression",
+                        Predicted_Price_Continent = "Continent Average"))
+
+# Scatter plot: Actual vs Predicted
+ggplot(long_predictions, aes(x = Price, y = Predicted_Price, color = Model)) +
+  geom_point(alpha = 0.6) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(
+    title = "Actual vs Predicted Prices by Model",
+    x = "Actual Price",
+    y = "Predicted Price",
+    color = "Model"
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "top"
+  )
+```
+
+```{r}
+# Combine residuals for both models into long format
+long_residuals <- resort_df_with_predictions %>%
+  select(Residual_LM, Residual_Continent) %>%
+  pivot_longer(
+    cols = c(Residual_LM, Residual_Continent),
+    names_to = "Model",
+    values_to = "Residual"
+  ) %>%
+  mutate(Model = recode(Model, 
+                        Residual_LM = "Linear Regression",
+                        Residual_Continent = "Continent Average"))
+
+# Density plot for residuals
+ggplot(long_residuals, aes(x = Residual, fill = Model)) +
+  geom_density(alpha = 0.6) +
+  labs(
+    title = "Distribution of Residuals by Model",
+    x = "Residual",
+    y = "Density",
+    fill = "Model"
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "top"
+  )
+```
+
 
