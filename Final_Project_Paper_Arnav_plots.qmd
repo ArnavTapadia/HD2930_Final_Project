@@ -6,7 +6,6 @@ format: pdf
 editor: source
 ---
 
-
 ```{r, message=FALSE}
 #| label: Installing-packages
 library(tidyverse)
@@ -19,18 +18,18 @@ set.seed(123)
 ```
 
 # Reading and Cleaning Data
+
 ```{r}
 #| label: reading-data
 resort_df <- read_csv("resorts.csv")
 snow_df <- read_csv("snow.csv")
 metadata <- read_csv("data_dictionary.csv")
 
-head(resort_df)
-head(snow_df)
-head(metadata)
+kable(head(resort_df |> select(ID, Resort, Latitude, Longitude, Country, Price, `Highest point`, `Beginner slopes`, `Intermediate slopes`)))
+kable(head(snow_df))
+kable(head(metadata))
 
 ```
-
 
 Dataset was found on https://www.mavenanalytics.io/data-playground?order=date_added%2Cdesc&search=ski%20resort. The csvs have been generated through webscraping from https://ski-resort-stats.com/ and the snow data come from https://nsidc.org/data/mod10cm/versions/61.
 
@@ -66,7 +65,6 @@ resort_df <- resort_df |>
 resort_df <- resort_df |>
   mutate(clean_resort_name = clean_non_alphanumeric(Resort))
 ```
-
 
 ```{r}
 #| label: fixing-missing-incorrect-values
@@ -175,8 +173,6 @@ resort_df <- resort_df %>%
 
 ```
 
-
-
 ```{r}
 #| label: merging-IDs
 # Function to assign resort IDs based on latitude and longitude with a specified tolerance
@@ -283,16 +279,14 @@ missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_mont
 print(missing_resort_ids) # This is the resort that has no snow data
 
 ```
-Using a radius of 0.5 degrees in latitude and longitude (equivalent to ~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts. For each resort we take all weather stations within our tolerance (±0.5 deg latitude and longitude) and average their readings for each month.
+
+Using a radius of 0.5 degrees in latitude and longitude (equivalent to \~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts. For each resort we take all weather stations within our tolerance (±0.5 deg latitude and longitude) and average their readings for each month.
 
 Some resorts don't have snow coverage readings for all months. This is presumably due to outages for weather cells located in those areas.
-
-
 
 ## Data Analysis Plots
 
 ### Resort location on world map and snow readings
-
 
 ```{r}
 #| label: plotting-resort-and-snow-on-map
@@ -331,10 +325,11 @@ ggplot() +
   )
 
 ```
+
 It is clear that there are many more snow weather observation stations across the whole world than just at the resort locations. When merging the 2 dataframes we only need to consider the snow observations for gps locations where there is a resort, so we will assign these observations with an ID that corresponds to the resort that is being measured. For snow observations at a longitude or latitude that don't contain a resort will have an ID value of NaN.
 
-
 ### Average Ski Season Start and End by Continent
+
 ```{r, fig.height=5, fig.width=4}
 # Create the boxplots for start and end
 ggplot(season_data, aes(x = Continent, y = Start, fill = Hemisphere)) +
@@ -392,7 +387,9 @@ ggplot(season_data, aes(x = Continent, y = End, fill = Hemisphere)) +
   )
 
 ```
+
 ### Correlation Heatmap
+
 ```{r}
 
 # Filter numeric columns excluding Latitude, Longitude, and Resort_ID
@@ -429,6 +426,7 @@ ggplot(melted_correlation, aes(x = Var1, y = Var2, fill = value)) +
 ```
 
 ### Snow coverage by month for each continent
+
 ```{r}
 # Join avg_snow_by_resort_and_month with resort_df, selecting only Continent and ID columns
 avg_snow_with_continent <- avg_snow_by_resort_and_month %>%
@@ -537,9 +535,6 @@ cat("RMSE for Linear Regression Model (Testing Data):", rmse_lm$.estimate, "\n")
 cat("RMSE for Continent Average Model (Testing Data):", rmse_continent$.estimate, "\n")
 
 ```
-
-
-
 
 ```{r}
 # Combine training and testing data for overall residual analysis
@@ -656,5 +651,3 @@ ggplot(long_residuals, aes(x = Residual, fill = Model)) +
     legend.position = "top"
   )
 ```
-
-
