@@ -62,9 +62,13 @@ cleaned_resort_df
 
 1. Boxplot: Ticket Prices by Continent
 ```{r}
-# Boxplot of ticket prices by continent
-ggplot(cleaned_resort_df, aes(x = Continent, y = Price, fill = Continent)) +
-  geom_boxplot(outlier.shape = 21, outlier.fill = "red", outlier.size = 2) +
+ggplot(cleaned_resort_df, aes(x = Continent, y = Price)) +
+  geom_boxplot(
+    outlier.shape = 21, 
+    outlier.fill = "red", 
+    outlier.size = 2, 
+    fill = "steelblue" # Set all boxplots to steel blue
+  ) +
   labs(
     title = "Distribution of Ticket Prices by Continent",
     subtitle = "Analyzing how ticket prices vary globally",
@@ -72,9 +76,7 @@ ggplot(cleaned_resort_df, aes(x = Continent, y = Price, fill = Continent)) +
     y = "Ticket Price (USD)"
   ) +
   theme_minimal(base_size = 12) +
-  theme(legend.position = "none") +
-  scale_fill_brewer(palette = "Set2")
-
+  theme(legend.position = "none")
 ```
 The boxplot shows the distribution of ticker prices across continents, showing North America with the highest median prices but a broader range. However, the higher median price reflects the premium ski destinations. Conversely, South America and Asia have significantly lower prices, promoting these regions as an economical alternative. European resorts show a moderate median price with wide variability, emphasizing the importance of choosing carefully within the area. Ultimately, the results underscore the importance of focusing on continents with lower median prices when selecting resorts. 
 
@@ -90,7 +92,16 @@ ggplot(cleaned_resort_df, aes(x = `Highest point`, y = Price)) +
     y = "Ticket Price (USD)",
     caption = "Data source: Cleaned Resort Dataset"
   ) +
-  scale_color_brewer(palette = "Dark2") +
+  scale_color_manual(
+    values = c(
+      "Europe" = "steelblue",
+      "North America" = "darkgrey",
+      "Asia" = "forestgreen",
+      "South America" = "orange",
+      "Oceania" = "purple",
+      "Africa" = "brown"
+    )
+  ) +
   theme_minimal(base_size = 12) +
   theme(legend.title = element_text(size = 10))
 ```
@@ -119,7 +130,7 @@ ggplot(cleaned_resort_df, aes(x = reorder(Season_Group, Price, FUN = mean), y = 
     caption = "Data source: Cleaned Resort Dataset"
   ) +
   theme_minimal(base_size = 12) +
-  scale_fill_brewer(palette = "Set3") # Adapted color palette
+  scale_fill_manual(values = c("darkblue", "steelblue", "darkgrey", "lightgrey")) # Custom color palette
 ```
 The bar chart shows the variation in the average ticket price across different season groups. The year-round resorts have the highest average prices, emphasizing a premium for offering year-round access. Meanwhile, the summer-focussed resorts are slightly cheaper than the winter ones, probably caused by less demand between skiing seasons. The “Other” category encompasses the mixed-season resorts with the lowest average price, making them the best economical choice. The graphic helps travelers focus on specific season types to balance the cost against their skiing preferences. 
 
@@ -127,8 +138,13 @@ The bar chart shows the variation in the average ticket price across different s
 4. Heatmap: Ticket Prices by Country
 ```{r, fig.width=10, fig.height=15}
 # Separate graphics for each continent, grouped by country
-ggplot(cleaned_resort_df, aes(x = reorder(Country, Price, FUN = median), y = Price, fill = Continent)) +
-  geom_boxplot(outlier.shape = 21, outlier.color = "black", outlier.size = 1) +
+ggplot(cleaned_resort_df, aes(x = reorder(Country, Price, FUN = median), y = Price)) +
+  geom_boxplot(
+    outlier.shape = 21, 
+    outlier.color = "black", 
+    outlier.size = 1, 
+    fill = "steelblue" # Set all boxplots to steel blue
+  ) +
   coord_flip() +
   labs(
     title = "Ticket Prices by Country (Grouped by Continent)",
@@ -137,14 +153,12 @@ ggplot(cleaned_resort_df, aes(x = reorder(Country, Price, FUN = median), y = Pri
     caption = "Data source: Cleaned Resort Dataset"
   ) +
   theme_minimal(base_size = 12) +
-  scale_fill_brewer(palette = "Set3", guide = "none") + # No legend needed since each continent is separate
   theme(
     axis.text.y = element_text(size = 8),
     axis.text.x = element_text(size = 10),
     strip.text = element_text(size = 12, face = "bold")
   ) +
   facet_wrap(~Continent, scales = "free_y", ncol = 1) # Facet by continent, free Y-axis scaling for clarity
-
 ```
 This boxplot helps us further break down ticket prices by country to provide granular insight into the data. Higher-priced countries such as Australia, the United States, and Canada dominate the top of the list, aligning with their reputation for premium resorts. Conversely, China, Turkey, and Georgia have the lowest ticket prices, making them attractive to budget-conscious travelers. However, it is essential to consider the cost of travel rather than just the resort when making economical skiing decisions. The variability can be substantial within regions, as seen within Europe. Ultimately, it is essential to be selective of a region itself, and selectivity within that region will yield the best, most cost-effective result. 
 
