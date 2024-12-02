@@ -25,7 +25,7 @@ resort_df <- read_csv("resorts.csv")
 snow_df <- read_csv("snow.csv")
 metadata <- read_csv("data_dictionary.csv")
 
-kable(head(resort_df |> select(ID, Resort, Latitude, Longitude, Country, Price, `Highest point`, `Beginner slopes`, `Intermediate slopes`)))
+kable(head(resort_df |> select(ID, Resort, Latitude, Longitude, Country, Price, `Highest point`, `Beginner slopes`)))
 kable(head(snow_df))
 kable(head(metadata))
 
@@ -278,6 +278,8 @@ missing_resort_ids <- setdiff(all_resort_ids, unique(avg_snow_by_resort_and_mont
 # Print the missing IDs
 print(missing_resort_ids) # This is the resort that has no snow data
 
+kable(head(avg_snow_by_resort_and_month))
+
 ```
 
 Using a radius of 0.5 degrees in latitude and longitude (equivalent to \~55km at the equator), we determined the average snow for each resort location for each month. Interestingly some resorts (especially in the europe region) are clustered very close together - within this 55km radius. As such, for the weather stations that lie in an overlapping region between 2 nearby resorts we have an average snow reading that applied to both resorts. For each resort we take all weather stations within our tolerance (±0.5 deg latitude and longitude) and average their readings for each month.
@@ -313,7 +315,7 @@ ggplot() +
   ) +
   # Add labels and styling
   labs(
-    title = "Global Map of Resorts and Snow Observation Locations",
+    title = "Global Map of Resorts and Snow Observations",
     x = "Longitude",
     y = "Latitude"
   ) +
@@ -355,7 +357,7 @@ ggplot(season_data, aes(x = Continent, y = Start, fill = Hemisphere)) +
   theme(
     plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1),
-    plot.caption = element_text(size=4),
+    plot.caption = element_text(size=8),
     legend.position = "top"
   )
 
@@ -382,15 +384,54 @@ ggplot(season_data, aes(x = Continent, y = End, fill = Hemisphere)) +
   theme(
     plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1),
-    plot.caption = element_text(size=4),
+    plot.caption = element_text(size=8),
     legend.position = "top",
   )
 
 ```
 
+### Snow coverage by month for each continent
+
+```{r, fig.height=4, fig.width=7}
+# Join avg_snow_by_resort_and_month with resort_df, selecting only Continent and ID columns
+avg_snow_with_continent <- avg_snow_by_resort_and_month %>%
+  left_join(resort_df %>% select(Resort_ID, Continent), 
+            by = c("Resort_ID" = "Resort_ID"))
+
+# Summarize average snow coverage per month for each continent
+avg_snow_by_continent <- avg_snow_with_continent %>%
+  group_by(Continent, Month) %>%
+  summarise(
+    avg_snow_coverage = mean(avg_snow, na.rm = TRUE),  # Calculate average snow coverage
+    .groups = "drop"
+  )
+
+# Convert Month to a proper date format for better plotting
+avg_snow_by_continent <- avg_snow_by_continent %>%
+  mutate(Month = as.Date(Month, format = "%Y-%m-%d"))
+
+# Plot the line plot showing average snow coverage per month by continent
+ggplot(avg_snow_by_continent, aes(x = Month, y = avg_snow_coverage, color = Continent, group = Continent)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Average Snow Coverage Per Month by Continent",
+    x = "Month",
+    y = "Average Snow Coverage (%)",
+    color = "Continent"
+  ) +
+  scale_x_date(date_labels = "%b", date_breaks = "1 month") +  # Show month names
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  )
+```
+
 ### Correlation Heatmap
 
-```{r}
+```{r, fig.height=4, fig.width=7}
 
 # Filter numeric columns excluding Latitude, Longitude, and Resort_ID
 numeric_columns <- resort_df %>%
@@ -425,44 +466,7 @@ ggplot(melted_correlation, aes(x = Var1, y = Var2, fill = value)) +
 
 ```
 
-### Snow coverage by month for each continent
 
-```{r}
-# Join avg_snow_by_resort_and_month with resort_df, selecting only Continent and ID columns
-avg_snow_with_continent <- avg_snow_by_resort_and_month %>%
-  left_join(resort_df %>% select(Resort_ID, Continent), 
-            by = c("Resort_ID" = "Resort_ID"))
-
-# Summarize average snow coverage per month for each continent
-avg_snow_by_continent <- avg_snow_with_continent %>%
-  group_by(Continent, Month) %>%
-  summarise(
-    avg_snow_coverage = mean(avg_snow, na.rm = TRUE),  # Calculate average snow coverage
-    .groups = "drop"
-  )
-
-# Convert Month to a proper date format for better plotting
-avg_snow_by_continent <- avg_snow_by_continent %>%
-  mutate(Month = as.Date(Month, format = "%Y-%m-%d"))
-
-# Plot the line plot showing average snow coverage per month by continent
-ggplot(avg_snow_by_continent, aes(x = Month, y = avg_snow_coverage, color = Continent, group = Continent)) +
-  geom_line(size = 1) +
-  geom_point(size = 2) +
-  labs(
-    title = "Average Snow Coverage Per Month by Continent",
-    x = "Month",
-    y = "Average Snow Coverage (cm)",
-    color = "Continent"
-  ) +
-  scale_x_date(date_labels = "%b", date_breaks = "1 month") +  # Show month names
-  theme_minimal() +
-  theme(
-    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "top"
-  )
-```
 
 ### Linear Regression
 
