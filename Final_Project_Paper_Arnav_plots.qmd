@@ -501,7 +501,21 @@ lm_fit <- lm_spec %>%
   )
 
 # Summarize the model
-summary(lm_fit$fit)
+lm_summary <- summary(lm_fit$fit)
+
+# Extract the coefficients table from the summary
+coefficients_df <- as.data.frame(lm_summary$coefficients) %>%
+  rownames_to_column(var = "Variable")  # Add variable names as a column
+
+# Rename columns for better readability
+colnames(coefficients_df) <- c("Variable", "Estimate", "Std. Error", "t value", "P-value")
+
+# Generate a nice table using knitr::kable
+kable(
+  coefficients_df,
+  caption = "Linear Regression Model Coefficients",
+  digits = 4  # Number of decimal places
+)
 
 # Predict on the training and testing sets
 training_data <- training_data %>%
@@ -608,10 +622,13 @@ long_predictions <- resort_df_with_predictions %>%
                         Predicted_Price_LM = "Linear Regression",
                         Predicted_Price_Continent = "Continent Average"))
 
-# Scatter plot: Actual vs Predicted
+# Scatter plot: Actual vs Predicted with annotation for y = x line
 ggplot(long_predictions, aes(x = Price, y = Predicted_Price, color = Model)) +
-  geom_point(alpha = 0.8,size=1) +
+  geom_point(alpha = 0.8, size = 1) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "black") +
+  annotate("text", x = 90, y = 95, label = "Predicted Price = True Price", color = "black", size = 4, hjust = 1) +
+  annotate("segment", x = 80, xend = 85, y = 93, yend = 85, 
+           arrow = arrow(length = unit(0.2, "cm")), color = "black") +
   labs(
     title = "Actual vs Predicted Prices by Model",
     x = "Actual Price",
