@@ -20,11 +20,13 @@ library(geosphere)  # For Haversine distance calculations
 
 # Reading and Cleaning Data
 ```{r}
+#reading in the data from teh deifferent csv files
 #| label: reading-data
 resort_df <- read_csv("resorts.csv")
 snow_df <- read_csv("snow.csv")
 metadata <- read_csv("data_dictionary.csv")
 
+#running head() to double check the data loaded properly 
 head(resort_df)
 head(snow_df)
 head(metadata)
